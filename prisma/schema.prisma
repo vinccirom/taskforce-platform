@@ -1,0 +1,459 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ===== USER & AUTHENTICATION =====
+
+model User {
+  id               String    @id @default(cuid())
+  privyId          String?   @unique
+  email            String    @unique
+  emailVerified    DateTime?
+  name             String?
+  password         String?
+  role             UserRole?
+  walletAddress    String? // Solana wallet address
+  evmWalletAddress String? // Base / EVM wallet address
+  image            String?
+  reputation       Float     @default(0)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  // Relations
+  accounts      Account[]
+  sessions      Session[]
+  tasksCreated  Task[]        @relation("CreatorTasks")
+  agentsManaged Agent[] // One operator can manage multiple agents
+  taskMessages  TaskMessage[]
+  notifications Notification[]
+
+  @@index([privyId])
+}
+
+enum PayoutChain {
+  SOLANA
+  EVM
+}
+
+enum UserRole {
+  CREATOR
+  AGENT_OPERATOR
+  ADMIN
+}
+
+// NextAuth models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ===== AGENT PROFILES =====
+
+model Agent {
+  id           String      @id @default(cuid())
+  name         String
+  operatorId   String? // Optional until operator verification
+  operator     User?       @relation(fields: [operatorId], references: [id], onDelete: SetNull)
+  capabilities String[] // ["browser", "screenshot", "functional-testing"]
+  status       AgentStatus @default(TRIAL)
+
+  // Verification fields
+  verificationEmail  String?
+  verificationTweet  String? // Tweet URL for social verification
+  verificationWallet String? // Wallet address
+  trialTestCompleted Boolean @default(false)
+
+  // Privy wallet integration
+  privyWalletId String? @unique // Privy embedded wallet ID
+  walletAddress String? @unique // Solana wallet address
+  privyPolicyId String? // Current policy ID (trial or full access)
+  privyUserId   String? // Privy user ID if linked
+
+  // Optional contact/config
+  contact String? // Webhook URL or other contact method
+  bio     String? @db.Text
+
+  // Stats & reputation
+  reputation     Float  @default(0)
+  totalEarnings  Float  @default(0)
+  completedTests Int    @default(0)
+  averageRating  Float?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Worker type (human, agent, or hybrid)
+  workerType WorkerType @default(AGENT)
+
+  // Relations
+  applications Application[]
+  submissions  Submission[]
+  apiKeys      AgentApiKey[]
+
+  @@index([operatorId])
+  @@index([status])
+  @@index([walletAddress])
+}
+
+enum WorkerType {
+  HUMAN // Human worker
+  AGENT // AI agent
+  HYBRID // Human + AI agent collaboration
+}
+
+enum AgentStatus {
+  TRIAL // Just registered, trial test pending
+  VERIFIED_CAPABILITY // Trial test passed, can accept paid tests
+  VERIFIED_OPERATOR // Human operator verified, payouts enabled
+  ACTIVE // Earning, good reputation
+  SUSPENDED // Banned/flagged
+}
+
+// ===== TASKS =====
+
+model Task {
+  id        String @id @default(cuid())
+  creatorId String
+  creator   User   @relation("CreatorTasks", fields: [creatorId], references: [id], onDelete: Cascade)
+
+  // Task Details
+  title          String
+  description    String   @db.Text
+  referenceUrl   String? // Optional URL (not all tasks need one)
+  credentials    String?  @db.Text // Encrypted access details if needed
+  requirements   String   @db.Text
+  category       String // Flexible category: "development", "design", "writing", "qa-testing", etc.
+  skillsRequired String[] // ["react", "typescript", "api-testing"]
+
+  // Pricing & Capacity
+  totalBudget      Float // Total payment for the task
+  paymentType      PaymentType @default(FIXED)
+  paymentPerWorker Float? // For fixed-price tasks (optional)
+  maxWorkers       Int         @default(1)
+  currentWorkers   Int         @default(0)
+
+  // Status & Timing
+  status      TaskStatus @default(DRAFT)
+  deadline    DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  completedAt DateTime?
+
+  // Escrow Wallet (per-task)
+  escrowWalletId      String? // Privy wallet ID
+  escrowWalletAddress String? // Solana public address
+  paymentChain        PayoutChain @default(SOLANA) // Chain the escrow was funded on
+
+  // Relations
+  applications Application[]
+  submissions  Submission[]
+  milestones   Milestone[]
+  messages     TaskMessage[]
+}
+
+enum PaymentType {
+  FIXED // Single payment upon completion
+  MILESTONE // Phased payment through milestones
+}
+
+enum TaskStatus {
+  DRAFT
+  ACTIVE
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}
+
+// ===== TASK MESSAGES =====
+
+model TaskMessage {
+  id        String      @id @default(cuid())
+  taskId    String
+  task      Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  senderId  String?
+  sender    User?       @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  content   String      @db.Text
+  type      MessageType @default(USER)
+  createdAt DateTime    @default(now())
+
+  @@index([taskId, createdAt])
+}
+
+enum MessageType {
+  USER
+  SYSTEM
+}
+
+// ===== MILESTONES =====
+
+model Milestone {
+  id     String @id @default(cuid())
+  taskId String
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String? @db.Text
+  order       Int // 1, 2, 3
+  percentage  Int // % of total payment (must sum to 100)
+  amount      Float // Auto-calculated from task total
+
+  status      MilestoneStatus @default(PENDING)
+  dueDate     DateTime?
+  completedAt DateTime?
+
+  deliverable String?    @db.Text // Worker's submission for this milestone
+  evidence    Evidence[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([taskId])
+}
+
+enum MilestoneStatus {
+  PENDING
+  IN_PROGRESS
+  UNDER_REVIEW
+  COMPLETED
+  DISPUTED
+}
+
+// ===== APPLICATIONS =====
+
+model Application {
+  id      String @id @default(cuid())
+  taskId  String
+  task    Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  agentId String
+  agent   Agent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  status     ApplicationStatus @default(PENDING)
+  appliedAt  DateTime          @default(now())
+  acceptedAt DateTime?
+
+  // Payment tracking
+  paidAmount Float?
+  paidAt     DateTime?
+
+  // Optional application message
+  message String?
+
+  // Relations
+  submission Submission?
+
+  @@unique([taskId, agentId]) // One application per agent per task
+}
+
+enum ApplicationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  PAID // Agent paid, can start testing
+  COMPLETED
+}
+
+// ===== SUBMISSIONS =====
+
+model Submission {
+  id            String      @id @default(cuid())
+  applicationId String      @unique
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  taskId        String
+  task          Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  agentId       String
+  agent         Agent       @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  // Submission Content
+  feedback    String   @db.Text
+  screenshots String[] // URLs to uploaded images
+  deliverable Json? // Structured deliverable data (flexible for any task type)
+  rating      Int? // 1-10 scale
+  timeSpent   Int? // Minutes spent on task
+
+  // Status
+  status        SubmissionStatus @default(SUBMITTED)
+  submittedAt   DateTime         @default(now())
+  reviewedAt    DateTime?
+  reviewNotes   String?          @db.Text
+  creatorRating Int? // Creator rates worker's work 1-5
+
+  // Payment
+  payoutAmount Float?
+  payoutStatus PayoutStatus @default(PENDING)
+  paidAt       DateTime?
+
+  // Relations
+  evidence Evidence[] // Screenshots, logs, files, etc.
+  dispute  Dispute?
+}
+
+// ===== DISPUTES =====
+
+model Dispute {
+  id           String     @id @default(cuid())
+  submissionId String     @unique
+  submission   Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  // Worker's dispute reason
+  reason String @db.Text
+
+  // Status
+  status     DisputeStatus @default(OPEN)
+  createdAt  DateTime      @default(now())
+  resolvedAt DateTime?
+
+  // Jury phase
+  juryStartedAt   DateTime?
+  juryCompletedAt DateTime?
+  juryVerdict     DisputeVerdict? // Majority vote result
+
+  // Human review phase
+  humanReviewerId String? // User ID of the human reviewer
+  humanDecision   DisputeVerdict? // Final decision
+  humanNotes      String?         @db.Text
+  humanReviewedAt DateTime?
+
+  // Outcome
+  outcome DisputeVerdict? // Final outcome (human decision overrides jury)
+
+  // Relations
+  juryVotes JuryVote[]
+}
+
+model JuryVote {
+  id         String         @id @default(cuid())
+  disputeId  String
+  dispute    Dispute        @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+  jurorIndex Int // 0, 1, 2 — which AI juror
+  vote       DisputeVerdict // WORKER_PAID or REJECTION_UPHELD
+  reasoning  String         @db.Text
+  confidence Float? // 0-1 confidence score
+  createdAt  DateTime       @default(now())
+
+  @@unique([disputeId, jurorIndex])
+}
+
+enum DisputeStatus {
+  OPEN // Just filed
+  JURY_REVIEW // AI jurors evaluating
+  HUMAN_REVIEW // Jury done, waiting for human
+  RESOLVED // Final decision made
+}
+
+enum DisputeVerdict {
+  WORKER_PAID // Worker's submission was valid, pay them
+  REJECTION_UPHELD // Creator's rejection was fair
+}
+
+enum SubmissionStatus {
+  SUBMITTED
+  APPROVED
+  REJECTED
+  DISPUTED
+}
+
+enum PayoutStatus {
+  PENDING
+  APPROVED
+  PAID
+  DISPUTED
+  REFUNDED
+}
+
+// ===== NOTIFICATIONS =====
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  message   String           @db.Text
+  link      String?
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  @@index([userId, read])
+  @@index([userId, createdAt])
+}
+
+enum NotificationType {
+  APPLICATION_RECEIVED
+  APPLICATION_ACCEPTED
+  APPLICATION_REJECTED
+  SUBMISSION_RECEIVED
+  SUBMISSION_APPROVED
+  SUBMISSION_REJECTED
+  DISPUTE_FILED
+  DISPUTE_RESOLVED
+  TASK_COMPLETED
+}
+
+// ===== AGENT API KEYS =====
+
+model AgentApiKey {
+  id         String    @id @default(cuid())
+  key        String    @unique // Hashed API key (bcrypt)
+  keyPreview String // First 8 chars for display: "apv_1a2b..."
+  agentId    String
+  agent      Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  name       String // Friendly name like "My Testing Bot"
+  lastUsed   DateTime?
+  createdAt  DateTime  @default(now())
+  revokedAt  DateTime?
+
+  @@index([agentId])
+}
+
+// ===== EVIDENCE (Screenshots, Logs, Files, etc.) =====
+
+model Evidence {
+  id           String      @id @default(cuid())
+  submissionId String?
+  submission   Submission? @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  milestoneId  String?
+  milestone    Milestone?  @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  url          String // Vercel Blob URL or S3 URL
+  type         String // "screenshot", "video", "log", "network_trace", "document", "code"
+  filename     String? // Original filename
+  size         Int? // File size in bytes
+  createdAt    DateTime    @default(now())
+
+  @@index([submissionId])
+  @@index([milestoneId])
+}
