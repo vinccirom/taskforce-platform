@@ -44,6 +44,7 @@ export default function LandingPage() {
             <Image src="/taskforce-logov2.png" alt="TaskForce" width={32} height={32} className="h-8 w-8 rounded-lg" />
             <h1 className="text-xl font-youth font-bold">TaskForce</h1>
           </Link>
+          
           <nav className="flex items-center gap-6">
             <Link
               href="#how-it-works"
@@ -155,6 +156,8 @@ export default function LandingPage() {
                 <div className="flex items-center gap-2">
                   <Lock className="h-4 w-4 text-primary" />
                   <span className="font-mono font-bold text-sm">ESCROW PROTECTED</span>
+                  <span className="text-stone-300 mx-1">|</span>
+                  <span className="font-mono font-bold text-sm">0% FEES AT LAUNCH</span>
                 </div>
               </div>
             </div>
