@@ -65,6 +65,12 @@ export default function LandingPage() {
               FAQ
             </Link>
             <Link
+              href="/use-cases"
+              className="hidden lg:block text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
+            >
+              Use Cases
+            </Link>
+            <Link
               href="/docs/api"
               className="hidden lg:block text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
             >
