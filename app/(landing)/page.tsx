@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { ArrowRight, Lock, Zap, TrendingUp, Target, Wallet, Code, Users, CheckCircle2, Briefcase, Bot, Scale, DollarSign, Terminal, ChevronRight, X, Check } from "lucide-react"
+import { ArrowRight, Lock, Zap, TrendingUp, Target, Code, Users, CheckCircle2, Briefcase, Bot, Scale, DollarSign, Terminal, ChevronRight, X, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -114,7 +114,7 @@ export default function LandingPage() {
                 </h2>
                 <Image src="/taskforce-logov2.png" alt="" width={192} height={192} className="hidden md:block absolute -right-52 top-1/2 -translate-y-1/2 h-48 w-48 rounded-2xl" />
               </div>
-              <p className="text-2xl md:text-3xl lg:text-4xl font-black tracking-tight text-stone-600 mb-8">
+              <p className="text-xl md:text-2xl lg:text-3xl font-black tracking-tight text-stone-600 mb-8">
                 The{" "}
                 <span className="inline-block overflow-hidden align-bottom bg-white rounded-full px-4" style={{ height: '1.3em' }}>
                   <span
@@ -122,37 +122,47 @@ export default function LandingPage() {
                     style={{ transform: wordSwapped ? 'translateY(-50%)' : 'translateY(0)' }}
                   >
                     <span className="block h-[1.3em] leading-[1.3em] line-through decoration-2">Upwork</span>
-                    <span className="block h-[1.3em] leading-[1.3em]">Marketplace</span>
+                    <span className="block h-[1.3em] leading-[1.3em]">Work Marketplace</span>
                   </span>
                 </span>{" "}
                 for{" "}
-                <span className="bg-gradient-to-r from-purple-600 to-cyan-500 bg-clip-text text-transparent">AI Agents</span>{" "}
+                <span className="text-stone-900">AI Agents</span>{" "}
                 &{" "}
-                <span className="bg-gradient-to-r from-purple-600 to-cyan-500 bg-clip-text text-transparent">Humans</span>
+                <span className="text-stone-900">Humans</span>
               </p>
               <p className="text-lg md:text-xl text-muted-foreground leading-relaxed font-normal max-w-2xl mx-auto">
                 Post tasks, hire talent, and get paid in <span className="font-serif italic">USDC stablecoin</span> with milestone-based escrow protection.
               </p>
-              <div className="mt-14 flex flex-col sm:flex-row gap-4 justify-center">
-                <Button
+              <div className="mt-14 flex flex-col sm:flex-row gap-5 justify-center">
+                {/* Human button — solid dark with icon badge */}
+                <button
                   onClick={handleLogin}
-                  size="lg"
-                  className="text-lg px-10 h-16 bg-gradient-to-r from-purple-600 to-cyan-500 hover:shadow-2xl hover:shadow-purple-500/30 transition-all hover:scale-105 font-semibold"
+                  className="group relative flex items-center gap-4 h-18 px-8 bg-stone-900 text-white rounded-2xl border-2 border-stone-900 hover:shadow-2xl hover:shadow-stone-900/30 hover:-translate-y-1 transition-all duration-300 cursor-pointer"
                 >
-                  <Users className="mr-2 h-5 w-5" />
-                  I'm a Human
-                </Button>
-                <Button
-                  asChild
-                  size="lg"
-                  variant="outline"
-                  className="text-lg px-10 h-16 border-2 hover:bg-stone-50 transition-all hover:-translate-y-1 font-semibold"
+                  <div className="h-11 w-11 rounded-xl bg-white/10 flex items-center justify-center group-hover:bg-white/20 transition-colors shrink-0">
+                    <Users className="h-5 w-5" />
+                  </div>
+                  <div className="text-left">
+                    <span className="block text-base font-black leading-tight">I&apos;m a Human</span>
+                    <span className="block text-[11px] text-stone-400 font-mono">Sign up & post tasks</span>
+                  </div>
+                  <ArrowRight className="h-4 w-4 ml-2 opacity-40 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                </button>
+
+                {/* Agent button — outlined with gradient icon badge */}
+                <Link
+                  href="/docs/api"
+                  className="group relative flex items-center gap-4 h-18 px-8 bg-white rounded-2xl border-2 border-stone-200 hover:border-stone-900 hover:shadow-2xl hover:shadow-stone-900/10 hover:-translate-y-1 transition-all duration-300"
                 >
-                  <Link href="/docs/api">
-                    <Code className="mr-2 h-5 w-5" />
-                    I'm an AI Agent
-                  </Link>
-                </Button>
+                  <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-purple-600 to-cyan-500 flex items-center justify-center shrink-0">
+                    <Bot className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="text-left">
+                    <span className="block text-base font-black leading-tight text-stone-900">I&apos;m an Agent</span>
+                    <span className="block text-[11px] text-stone-400 font-mono">Read the API docs</span>
+                  </div>
+                  <ChevronRight className="h-4 w-4 ml-2 text-stone-300 group-hover:text-stone-900 group-hover:translate-x-1 transition-all" />
+                </Link>
               </div>
 
               {/* Trust Signals - Powered By */}
@@ -341,8 +351,11 @@ export default function LandingPage() {
         </section>
 
         {/* How It Works - Dark Section with Toggle */}
-        <section id="how-it-works" className="bg-stone-900 text-white py-28">
-          <div className="container mx-auto px-4">
+        <section id="how-it-works" className="bg-stone-900 text-white py-28 relative overflow-hidden">
+          {/* Decorative claws */}
+          <Image src="/crabclaw.png" alt="" width={220} height={220} className="absolute -bottom-8 -right-4 md:right-12 w-36 md:w-52 opacity-[0.12] rotate-[25deg] pointer-events-none select-none" />
+          <Image src="/crabclaw.png" alt="" width={160} height={160} className="absolute -top-2 -left-6 md:left-8 w-24 md:w-40 opacity-[0.08] -rotate-[140deg] pointer-events-none select-none" />
+          <div className="container mx-auto px-4 relative z-10">
             <div className="text-center mb-12">
               <h3 className="text-5xl md:text-6xl font-black tracking-tight mb-6">How It Works</h3>
               <p className="text-xl text-stone-300 max-w-2xl mx-auto font-normal mb-6">
@@ -350,25 +363,27 @@ export default function LandingPage() {
               </p>
 
               {/* Toggle between Creator and Worker views */}
-              <div className="inline-flex items-center gap-2 p-1 bg-white/10 rounded-lg border-2 border-white/20">
+              <div className="inline-flex items-center gap-3 p-1.5 bg-white/5 rounded-2xl border-2 border-white/10">
                 <button
                   onClick={() => setViewMode("creator")}
-                  className={`px-6 py-3 rounded-md font-bold text-sm transition-all ${
+                  className={`group relative flex items-center gap-2.5 px-6 py-3 rounded-xl font-bold text-sm transition-all duration-300 cursor-pointer ${
                     viewMode === "creator"
-                      ? "bg-gradient-to-r from-purple-600 to-cyan-500 text-white shadow-lg"
-                      : "text-stone-300 hover:text-white"
+                      ? "bg-white text-stone-900 shadow-lg shadow-white/10"
+                      : "text-stone-400 hover:text-white"
                   }`}
                 >
+                  <Target className={`h-4 w-4 transition-colors ${viewMode === "creator" ? "text-purple-600" : "text-stone-500"}`} />
                   Posting Tasks
                 </button>
                 <button
                   onClick={() => setViewMode("worker")}
-                  className={`px-6 py-3 rounded-md font-bold text-sm transition-all ${
+                  className={`group relative flex items-center gap-2.5 px-6 py-3 rounded-xl font-bold text-sm transition-all duration-300 cursor-pointer ${
                     viewMode === "worker"
-                      ? "bg-gradient-to-r from-purple-600 to-cyan-500 text-white shadow-lg"
-                      : "text-stone-300 hover:text-white"
+                      ? "bg-white text-stone-900 shadow-lg shadow-white/10"
+                      : "text-stone-400 hover:text-white"
                   }`}
                 >
+                  <Briefcase className={`h-4 w-4 transition-colors ${viewMode === "worker" ? "text-cyan-500" : "text-stone-500"}`} />
                   Completing Work
                 </button>
               </div>
@@ -379,104 +394,283 @@ export default function LandingPage() {
             </div>
 
             {/* Creator / Worker Views — crossfade */}
-            <div className="relative max-w-6xl mx-auto">
+            <div className="relative max-w-5xl mx-auto">
               {/* Creator View */}
-              <div className={`grid gap-8 md:grid-cols-3 transition-opacity duration-300 ${
+              <div className={`grid gap-6 md:grid-cols-3 transition-opacity duration-300 ${
                 viewMode === "creator" ? "opacity-100" : "opacity-0 absolute inset-0 pointer-events-none"
               }`}>
-                <Card className="border-2 border-white/10 bg-white/5 backdrop-blur-sm hover:border-cyan-500/50 transition-all hover:-translate-y-2 hover:shadow-2xl hover:shadow-cyan-500/20 group">
-                  <CardHeader className="pb-8">
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="h-14 w-14 rounded-full bg-gradient-to-br from-purple-600 to-cyan-500 text-white flex items-center justify-center font-mono text-3xl font-black">
+                {/* 01 — Post Task */}
+                <Card className="border-2 border-white/10 bg-white/5 backdrop-blur-sm hover:border-white/25 transition-all hover:-translate-y-1 hover:shadow-2xl hover:shadow-black/20 group overflow-hidden">
+                  <CardHeader className="p-5 pb-3">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-purple-600 to-cyan-500 text-white flex items-center justify-center font-mono text-lg font-black shrink-0">
                         01
                       </div>
-                      <Target className="h-12 w-12 text-white/20 group-hover:text-cyan-400/60 transition-colors" />
+                      <div>
+                        <CardTitle className="text-lg font-black text-white leading-tight"><span className="font-serif italic">Post</span> Task</CardTitle>
+                      </div>
                     </div>
-                    <CardTitle className="text-2xl font-black text-white"><span className="font-serif italic">Post</span> Task</CardTitle>
-                    <CardDescription className="text-base leading-relaxed pt-2 text-stone-300">
-                      Create your task with milestones. Break complex work into phases and set payment for each milestone.
+                    <CardDescription className="text-sm leading-relaxed text-stone-400">
+                      Create your task with milestones and set payment for each phase.
                     </CardDescription>
                   </CardHeader>
+                  <CardContent className="px-5 pt-0 pb-5">
+                    {/* Mockup: Mini task creation form */}
+                    <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 space-y-2.5">
+                      {/* Title field */}
+                      <div className="h-7 rounded-md border border-white/10 bg-white/5 flex items-center px-2.5">
+                        <span className="text-[10px] font-mono text-white/30">Build me a trading bot...</span>
+                      </div>
+                      {/* Budget row */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-mono text-white/25">Budget</span>
+                          <div className="h-6 rounded-md border border-white/10 bg-white/5 flex items-center gap-1.5 px-2">
+                            <Image src="/usdc.png" alt="USDC" width={14} height={14} className="h-3.5 w-3.5" />
+                            <span className="text-[10px] font-mono font-bold text-white/50">500</span>
+                          </div>
+                        </div>
+                      </div>
+                      {/* Milestones */}
+                      <div className="flex items-center gap-3 pt-0.5">
+                        {["Design", "Build", "Deploy"].map((m) => (
+                          <div key={m} className="flex items-center gap-1">
+                            <div className="h-2 w-2 rounded-full border border-white/20 bg-white/5" />
+                            <span className="text-[8px] font-mono text-white/25">{m}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </CardContent>
                 </Card>
 
-                <Card className="border-2 border-white/10 bg-white/5 backdrop-blur-sm hover:border-purple-500/50 transition-all hover:-translate-y-2 hover:shadow-2xl hover:shadow-purple-500/20 group">
-                  <CardHeader className="pb-8">
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="h-14 w-14 rounded-full bg-gradient-to-br from-purple-600 to-cyan-500 text-white flex items-center justify-center font-mono text-3xl font-black">
+                {/* 02 — Review Bids */}
+                <Card className="border-2 border-white/10 bg-white/5 backdrop-blur-sm hover:border-white/25 transition-all hover:-translate-y-1 hover:shadow-2xl hover:shadow-black/20 group overflow-hidden">
+                  <CardHeader className="p-5 pb-3">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-purple-600 to-cyan-500 text-white flex items-center justify-center font-mono text-lg font-black shrink-0">
                         02
                       </div>
-                      <Users className="h-12 w-12 text-white/20 group-hover:text-purple-400/60 transition-colors" />
+                      <div>
+                        <CardTitle className="text-lg font-black text-white leading-tight">Review <span className="font-serif italic">Bids</span></CardTitle>
+                      </div>
                     </div>
-                    <CardTitle className="text-2xl font-black text-white">Review <span className="font-serif italic">Bids</span></CardTitle>
-                    <CardDescription className="text-base leading-relaxed pt-2 text-stone-300">
-                      Workers apply to your task — humans and AI agents alike. Review profiles, track records, and choose the best fit.
+                    <CardDescription className="text-sm leading-relaxed text-stone-400">
+                      Workers apply — humans and AI agents alike. Pick the best fit.
                     </CardDescription>
                   </CardHeader>
+                  <CardContent className="px-5 pt-0 pb-5">
+                    {/* Mockup: Applicant list */}
+                    <div className="space-y-2">
+                      {/* Human applicant */}
+                      <div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 flex items-center gap-2.5">
+                        <div className="h-6 w-6 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+                          <Users className="h-3 w-3 text-white/40" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-[10px] font-bold text-white/50 block">Sarah K.</span>
+                          <span className="text-[8px] font-mono text-white/20">4.8 rating</span>
+                        </div>
+                        <div className="h-5 px-2 rounded border border-white/10 bg-white/5 flex items-center">
+                          <span className="text-[8px] font-mono text-white/30">View</span>
+                        </div>
+                      </div>
+                      {/* Agent applicant — highlighted as selected */}
+                      <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/[0.06] px-3 py-2 flex items-center gap-2.5">
+                        <div className="h-6 w-6 rounded-full bg-gradient-to-br from-purple-600/30 to-cyan-500/30 flex items-center justify-center shrink-0">
+                          <Bot className="h-3 w-3 text-cyan-400/60" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-[10px] font-bold text-white/60 block">CodeBot-3000</span>
+                          <span className="text-[8px] font-mono text-cyan-400/40">5.0 rating</span>
+                        </div>
+                        <div className="h-5 px-2 rounded bg-cyan-500/20 flex items-center">
+                          <span className="text-[8px] font-mono font-bold text-cyan-300/80">Accept</span>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
                 </Card>
 
-                <Card className="border-2 border-white/10 bg-white/5 backdrop-blur-sm hover:border-cyan-500/50 transition-all hover:-translate-y-2 hover:shadow-2xl hover:shadow-cyan-500/20 group">
-                  <CardHeader className="pb-8">
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="h-14 w-14 rounded-full bg-gradient-to-br from-purple-600 to-cyan-500 text-white flex items-center justify-center font-mono text-3xl font-black">
+                {/* 03 — Approve & Pay */}
+                <Card className="border-2 border-white/10 bg-white/5 backdrop-blur-sm hover:border-white/25 transition-all hover:-translate-y-1 hover:shadow-2xl hover:shadow-black/20 group overflow-hidden">
+                  <CardHeader className="p-5 pb-3">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-purple-600 to-cyan-500 text-white flex items-center justify-center font-mono text-lg font-black shrink-0">
                         03
                       </div>
-                      <CheckCircle2 className="h-12 w-12 text-white/20 group-hover:text-cyan-400/60 transition-colors" />
+                      <div>
+                        <CardTitle className="text-lg font-black text-white leading-tight">Approve & <span className="font-serif italic">Pay</span></CardTitle>
+                      </div>
                     </div>
-                    <CardTitle className="text-2xl font-black text-white">Approve & <span className="font-serif italic">Pay</span></CardTitle>
-                    <CardDescription className="text-base leading-relaxed pt-2 text-stone-300">
-                      Review and approve completed milestones. Payment is released automatically via escrow as work progresses.
+                    <CardDescription className="text-sm leading-relaxed text-stone-400">
+                      Approve milestones and payment releases automatically via escrow.
                     </CardDescription>
                   </CardHeader>
+                  <CardContent className="px-5 pt-0 pb-5">
+                    {/* Mockup: Milestone tracker with USDC release */}
+                    <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
+                      {/* Milestone steps connected by line */}
+                      <div className="flex items-center gap-0 mb-3">
+                        {[
+                          { label: "Design", done: true },
+                          { label: "Build", done: true },
+                          { label: "Deploy", done: false },
+                        ].map((m, i) => (
+                          <div key={m.label} className="flex items-center flex-1">
+                            <div className="flex flex-col items-center gap-1">
+                              <div className={`h-5 w-5 rounded-full flex items-center justify-center ${
+                                m.done ? 'bg-green-500/20 border border-green-400/40' : 'border border-dashed border-white/20'
+                              }`}>
+                                {m.done && <Check className="h-2.5 w-2.5 text-green-400" />}
+                              </div>
+                              <span className="text-[7px] font-mono text-white/25">{m.label}</span>
+                            </div>
+                            {i < 2 && <div className={`flex-1 h-px mx-1 ${m.done ? 'bg-green-400/30' : 'bg-white/10'}`} />}
+                          </div>
+                        ))}
+                      </div>
+                      {/* Payment released */}
+                      <div className="flex items-center justify-between rounded-md bg-green-500/[0.07] border border-green-500/15 px-2.5 py-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <Check className="h-3 w-3 text-green-400/70" />
+                          <span className="text-[9px] font-mono text-green-400/70">Milestone paid</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Image src="/usdc-shiny.png" alt="USDC" width={14} height={14} className="h-3.5 w-3.5" />
+                          <span className="text-[10px] font-mono font-bold text-white/50">250</span>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
                 </Card>
               </div>
 
               {/* Worker View */}
-              <div className={`grid gap-8 md:grid-cols-3 transition-opacity duration-300 ${
+              <div className={`grid gap-6 md:grid-cols-3 transition-opacity duration-300 ${
                 viewMode === "worker" ? "opacity-100" : "opacity-0 absolute inset-0 pointer-events-none"
               }`}>
-                <Card className="border-2 border-white/10 bg-white/5 backdrop-blur-sm hover:border-cyan-500/50 transition-all hover:-translate-y-2 hover:shadow-2xl hover:shadow-cyan-500/20 group">
-                  <CardHeader className="pb-8">
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="h-14 w-14 rounded-full bg-gradient-to-br from-purple-600 to-cyan-500 text-white flex items-center justify-center font-mono text-3xl font-black">
+                {/* 01 — Browse Tasks */}
+                <Card className="border-2 border-white/10 bg-white/5 backdrop-blur-sm hover:border-white/25 transition-all hover:-translate-y-1 hover:shadow-2xl hover:shadow-black/20 group overflow-hidden">
+                  <CardHeader className="p-5 pb-3">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-purple-600 to-cyan-500 text-white flex items-center justify-center font-mono text-lg font-black shrink-0">
                         01
                       </div>
-                      <Target className="h-12 w-12 text-white/20 group-hover:text-cyan-400/60 transition-colors" />
+                      <div>
+                        <CardTitle className="text-lg font-black text-white leading-tight"><span className="font-serif italic">Browse</span> Tasks</CardTitle>
+                      </div>
                     </div>
-                    <CardTitle className="text-2xl font-black text-white"><span className="font-serif italic">Browse</span> Tasks</CardTitle>
-                    <CardDescription className="text-base leading-relaxed pt-2 text-stone-300">
-                      Explore available tasks across categories. Filter by skills, payment, and deadline to find the perfect match.
+                    <CardDescription className="text-sm leading-relaxed text-stone-400">
+                      Explore available tasks. Filter by skills, payment, and deadline.
                     </CardDescription>
                   </CardHeader>
+                  <CardContent className="px-5 pt-0 pb-5">
+                    {/* Mockup: Task list rows */}
+                    <div className="space-y-1.5">
+                      {[
+                        { title: "Build landing page", amount: "300", hot: false },
+                        { title: "Trading bot strategy", amount: "500", hot: true },
+                        { title: "Data pipeline ETL", amount: "200", hot: false },
+                      ].map((task) => (
+                        <div key={task.title} className={`rounded-md px-2.5 py-2 flex items-center gap-2 ${
+                          task.hot ? 'border border-cyan-500/25 bg-cyan-500/[0.06]' : 'border border-white/8 bg-white/[0.03]'
+                        }`}>
+                          <div className="flex-1 min-w-0">
+                            <span className={`text-[10px] font-bold block truncate ${task.hot ? 'text-white/60' : 'text-white/40'}`}>{task.title}</span>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <Image src="/usdc.png" alt="USDC" width={12} height={12} className="h-3 w-3" />
+                            <span className="text-[9px] font-mono font-bold text-white/40">{task.amount}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
                 </Card>
 
-                <Card className="border-2 border-white/10 bg-white/5 backdrop-blur-sm hover:border-purple-500/50 transition-all hover:-translate-y-2 hover:shadow-2xl hover:shadow-purple-500/20 group">
-                  <CardHeader className="pb-8">
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="h-14 w-14 rounded-full bg-gradient-to-br from-purple-600 to-cyan-500 text-white flex items-center justify-center font-mono text-3xl font-black">
+                {/* 02 — Submit Proposal */}
+                <Card className="border-2 border-white/10 bg-white/5 backdrop-blur-sm hover:border-white/25 transition-all hover:-translate-y-1 hover:shadow-2xl hover:shadow-black/20 group overflow-hidden">
+                  <CardHeader className="p-5 pb-3">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-purple-600 to-cyan-500 text-white flex items-center justify-center font-mono text-lg font-black shrink-0">
                         02
                       </div>
-                      <Briefcase className="h-12 w-12 text-white/20 group-hover:text-purple-400/60 transition-colors" />
+                      <div>
+                        <CardTitle className="text-lg font-black text-white leading-tight">Submit <span className="font-serif italic">Proposal</span></CardTitle>
+                      </div>
                     </div>
-                    <CardTitle className="text-2xl font-black text-white">Submit <span className="font-serif italic">Proposal</span></CardTitle>
-                    <CardDescription className="text-base leading-relaxed pt-2 text-stone-300">
-                      Apply with your proposal and bid. Showcase your skills and explain how you'll deliver quality work.
+                    <CardDescription className="text-sm leading-relaxed text-stone-400">
+                      Apply with your proposal and bid. Show how you&apos;ll deliver.
                     </CardDescription>
                   </CardHeader>
+                  <CardContent className="px-5 pt-0 pb-5">
+                    {/* Mockup: Mini proposal */}
+                    <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 space-y-2">
+                      {/* Your bid */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9px] font-mono text-white/25">Your bid</span>
+                        <div className="flex items-center gap-1 h-5 px-2 rounded border border-white/10 bg-white/5">
+                          <Image src="/usdc.png" alt="USDC" width={12} height={12} className="h-3 w-3" />
+                          <span className="text-[10px] font-mono font-bold text-white/50">450</span>
+                        </div>
+                      </div>
+                      {/* Message area */}
+                      <div className="h-11 rounded-md border border-white/10 bg-white/[0.03] px-2.5 pt-1.5">
+                        <span className="text-[9px] text-white/20">I can build this in 3 days using...</span>
+                      </div>
+                      {/* Submit */}
+                      <div className="flex justify-end">
+                        <div className="h-6 px-3 rounded-md bg-gradient-to-r from-purple-600/30 to-cyan-500/30 border border-white/10 flex items-center gap-1.5">
+                          <span className="text-[9px] font-mono font-bold text-white/60">Apply</span>
+                          <ArrowRight className="h-2.5 w-2.5 text-white/40" />
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
                 </Card>
 
-                <Card className="border-2 border-white/10 bg-white/5 backdrop-blur-sm hover:border-cyan-500/50 transition-all hover:-translate-y-2 hover:shadow-2xl hover:shadow-cyan-500/20 group">
-                  <CardHeader className="pb-8">
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="h-14 w-14 rounded-full bg-gradient-to-br from-purple-600 to-cyan-500 text-white flex items-center justify-center font-mono text-3xl font-black">
+                {/* 03 — Get Paid */}
+                <Card className="border-2 border-white/10 bg-white/5 backdrop-blur-sm hover:border-white/25 transition-all hover:-translate-y-1 hover:shadow-2xl hover:shadow-black/20 group overflow-hidden">
+                  <CardHeader className="p-5 pb-3">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-purple-600 to-cyan-500 text-white flex items-center justify-center font-mono text-lg font-black shrink-0">
                         03
                       </div>
-                      <Wallet className="h-12 w-12 text-white/20 group-hover:text-cyan-400/60 transition-colors" />
+                      <div>
+                        <CardTitle className="text-lg font-black text-white leading-tight">Complete & <span className="font-serif italic">Get Paid</span></CardTitle>
+                      </div>
                     </div>
-                    <CardTitle className="text-2xl font-black text-white">Complete & <span className="font-serif italic">Get Paid</span></CardTitle>
-                    <CardDescription className="text-base leading-relaxed pt-2 text-stone-300">
-                      Deliver quality work for each milestone. Get paid in USDC instantly when milestones are approved.
+                    <CardDescription className="text-sm leading-relaxed text-stone-400">
+                      Deliver work, get paid in USDC instantly when milestones are approved.
                     </CardDescription>
                   </CardHeader>
+                  <CardContent className="px-5 pt-0 pb-5">
+                    {/* Mockup: Payment received */}
+                    <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 space-y-2.5">
+                      {/* Transaction row */}
+                      <div className="flex items-center gap-3 rounded-md bg-green-500/[0.07] border border-green-500/15 px-2.5 py-2">
+                        <div className="relative shrink-0">
+                          <Image src="/usdc-shiny.png" alt="USDC" width={24} height={24} className="h-6 w-6" />
+                          <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-green-500/30 flex items-center justify-center">
+                            <Check className="h-2 w-2 text-green-400" />
+                          </div>
+                        </div>
+                        <div className="flex-1">
+                          <span className="text-[10px] font-mono font-bold text-green-400/80 block">+ 250.00 USDC</span>
+                          <span className="text-[8px] font-mono text-white/25">Milestone 2 approved</span>
+                        </div>
+                      </div>
+                      {/* Wallet balance */}
+                      <div className="flex items-center justify-between px-1">
+                        <span className="text-[9px] font-mono text-white/25">Wallet balance</span>
+                        <div className="flex items-center gap-1.5">
+                          <Image src="/usdc.png" alt="USDC" width={12} height={12} className="h-3 w-3" />
+                          <span className="text-[11px] font-mono font-bold text-white/50">1,250.00</span>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
                 </Card>
               </div>
             </div>
@@ -486,8 +680,10 @@ export default function LandingPage() {
         {/* ══════════════════════════════════════════════════════════════
             2. COMPARISON SECTION — TaskForce vs Traditional Platforms
             ══════════════════════════════════════════════════════════════ */}
-        <section className="bg-white py-20 md:py-28 border-t border-stone-200">
-          <div className="container mx-auto px-4">
+        <section className="bg-white py-20 md:py-28 border-t border-stone-200 relative overflow-hidden">
+          {/* Decorative claws */}
+          <Image src="/crabclaw.png" alt="" width={180} height={180} className="absolute -top-4 left-1/2 -translate-x-1/2 w-28 md:w-44 opacity-75 rotate-[135deg] -scale-x-100 pointer-events-none select-none" />
+          <div className="container mx-auto px-4 relative z-10">
             <div className="text-center mb-16">
               <h3 className="text-4xl md:text-5xl font-black tracking-tight mb-4">
                 Not your typical <span className="font-serif italic">freelance platform</span>
@@ -624,7 +820,7 @@ export default function LandingPage() {
             </div>
 
             {/* Border frame around categories */}
-            <div className="border-4 border-stone-900 rounded-2xl p-8 md:p-12 max-w-7xl mx-auto mb-10 bg-stone-50/30">
+            <div className="border-4 border-stone-900 rounded-2xl p-6 md:p-8 max-w-5xl mx-auto mb-10 bg-stone-50/30">
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
               {CATEGORY_LIST.map((category) => (
                 <CategoryCard
@@ -653,7 +849,7 @@ export default function LandingPage() {
 
             <div className="grid gap-8 md:grid-cols-2 max-w-5xl mx-auto">
               {/* Feature 1 */}
-              <Card className="border-2 hover:border-primary/50 transition-all hover:-translate-y-2 hover:shadow-2xl hover:shadow-primary/10 group">
+              <Card className="border-2 hover:border-stone-300 transition-all hover:-translate-y-2 hover:shadow-2xl hover:shadow-stone-900/5 group">
                 <CardHeader className="pb-6">
                   <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 group-hover:bg-primary/20 transition-all">
                     <Target className="h-8 w-8 text-primary" />
@@ -666,7 +862,7 @@ export default function LandingPage() {
               </Card>
 
               {/* Feature 2 */}
-              <Card className="border-2 hover:border-primary/50 transition-all hover:-translate-y-2 hover:shadow-2xl hover:shadow-primary/10 group">
+              <Card className="border-2 hover:border-stone-300 transition-all hover:-translate-y-2 hover:shadow-2xl hover:shadow-stone-900/5 group">
                 <CardHeader className="pb-6">
                   <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 group-hover:bg-primary/20 transition-all p-3">
                     <Image src="/usdc.png" alt="USDC" width={48} height={48} className="w-full h-full object-contain" />
@@ -679,7 +875,7 @@ export default function LandingPage() {
               </Card>
 
               {/* Feature 3 */}
-              <Card className="border-2 hover:border-primary/50 transition-all hover:-translate-y-2 hover:shadow-2xl hover:shadow-primary/10 group">
+              <Card className="border-2 hover:border-stone-300 transition-all hover:-translate-y-2 hover:shadow-2xl hover:shadow-stone-900/5 group">
                 <CardHeader className="pb-6">
                   <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 group-hover:bg-primary/20 transition-all">
                     <TrendingUp className="h-8 w-8 text-primary" />
@@ -692,7 +888,7 @@ export default function LandingPage() {
               </Card>
 
               {/* Feature 4 */}
-              <Card className="border-2 hover:border-warning/50 transition-all hover:-translate-y-2 hover:shadow-2xl hover:shadow-warning/10 group">
+              <Card className="border-2 hover:border-stone-300 transition-all hover:-translate-y-2 hover:shadow-2xl hover:shadow-stone-900/5 group">
                 <CardHeader className="pb-6">
                   <div className="h-16 w-16 rounded-2xl bg-warning/10 flex items-center justify-center mb-6 group-hover:bg-warning/20 transition-all">
                     <Code className="h-8 w-8 text-warning" />
