@@ -36,7 +36,7 @@ export default function LandingPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-white">
+    <div className="flex min-h-screen flex-col bg-white scroll-smooth">
       {/* Header */}
       <header className="border-b bg-white/80 backdrop-blur-sm supports-[backdrop-filter]:bg-white/60 sticky top-0 z-50">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
@@ -104,7 +104,7 @@ export default function LandingPage() {
             <div className="absolute inset-0 opacity-30" style={{backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noiseFilter\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noiseFilter)\'/%3E%3C/svg%3E")'}} />
           </div>
 
-          <div className="relative container mx-auto px-4 py-10 md:py-14 lg:py-20">
+          <div className="relative container mx-auto px-4 py-14 md:py-20 lg:py-28">
             <div className="mx-auto max-w-7xl">
             {/* Full-Width Hero Content */}
             <div className="relative z-10 max-w-5xl mx-auto text-center">
@@ -112,7 +112,7 @@ export default function LandingPage() {
                 <h2 className="font-youth font-bold tracking-normal text-hero-color" style={{ fontSize: 'clamp(56px, 10vw, 110px)', lineHeight: 0.9 }}>
                   TaskForce
                 </h2>
-                <Image src="/taskforce-logov2.png" alt="" width={192} height={192} className="absolute -right-36 md:-right-52 top-1/2 -translate-y-1/2 h-32 w-32 md:h-48 md:w-48 rounded-2xl" />
+                <Image src="/taskforce-logov2.png" alt="" width={192} height={192} className="hidden md:block absolute -right-52 top-1/2 -translate-y-1/2 h-48 w-48 rounded-2xl" />
               </div>
               <p className="text-2xl md:text-3xl lg:text-4xl font-black tracking-tight text-stone-600 mb-8">
                 The{" "}
@@ -136,7 +136,6 @@ export default function LandingPage() {
               <div className="mt-14 flex flex-col sm:flex-row gap-4 justify-center">
                 <Button
                   onClick={handleLogin}
-
                   size="lg"
                   className="text-lg px-10 h-16 bg-gradient-to-r from-purple-600 to-cyan-500 hover:shadow-2xl hover:shadow-purple-500/30 transition-all hover:scale-105 font-semibold"
                 >
@@ -379,9 +378,12 @@ export default function LandingPage() {
               </p>
             </div>
 
-            {/* Creator View */}
-            {viewMode === "creator" && (
-              <div className="grid gap-8 md:grid-cols-3 max-w-6xl mx-auto">
+            {/* Creator / Worker Views — crossfade */}
+            <div className="relative max-w-6xl mx-auto">
+              {/* Creator View */}
+              <div className={`grid gap-8 md:grid-cols-3 transition-opacity duration-300 ${
+                viewMode === "creator" ? "opacity-100" : "opacity-0 absolute inset-0 pointer-events-none"
+              }`}>
                 <Card className="border-2 border-white/10 bg-white/5 backdrop-blur-sm hover:border-cyan-500/50 transition-all hover:-translate-y-2 hover:shadow-2xl hover:shadow-cyan-500/20 group">
                   <CardHeader className="pb-8">
                     <div className="flex items-center justify-between mb-6">
@@ -427,11 +429,11 @@ export default function LandingPage() {
                   </CardHeader>
                 </Card>
               </div>
-            )}
 
-            {/* Worker View */}
-            {viewMode === "worker" && (
-              <div className="grid gap-8 md:grid-cols-3 max-w-6xl mx-auto">
+              {/* Worker View */}
+              <div className={`grid gap-8 md:grid-cols-3 transition-opacity duration-300 ${
+                viewMode === "worker" ? "opacity-100" : "opacity-0 absolute inset-0 pointer-events-none"
+              }`}>
                 <Card className="border-2 border-white/10 bg-white/5 backdrop-blur-sm hover:border-cyan-500/50 transition-all hover:-translate-y-2 hover:shadow-2xl hover:shadow-cyan-500/20 group">
                   <CardHeader className="pb-8">
                     <div className="flex items-center justify-between mb-6">
@@ -477,7 +479,7 @@ export default function LandingPage() {
                   </CardHeader>
                 </Card>
               </div>
-            )}
+            </div>
           </div>
         </section>
 
@@ -634,19 +636,6 @@ export default function LandingPage() {
               </div>
             </div>
 
-            <div className="text-center">
-              <Button
-                asChild
-                size="lg"
-                variant="outline"
-                className="border-2 hover:bg-stone-50 transition-all hover:-translate-y-1"
-              >
-                <Link href="/browse">
-                  View All Tasks
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
           </div>
         </section>
 
@@ -1001,7 +990,6 @@ export default function LandingPage() {
                 <div className="flex flex-col sm:flex-row justify-center gap-4">
                   <Button
                     onClick={handleLogin}
-
                     size="lg"
                     className="text-lg px-10 h-16 bg-gradient-to-r from-purple-600 to-cyan-500 hover:shadow-2xl hover:shadow-purple-500/50 transition-all hover:scale-105 font-semibold"
                   >
@@ -1010,7 +998,6 @@ export default function LandingPage() {
                   </Button>
                   <Button
                     onClick={handleLogin}
-
                     size="lg"
                     variant="outline"
                     className="text-lg px-10 h-14 border-2 border-white text-white hover:bg-white hover:text-stone-900 transition-all hover:-translate-y-1 font-semibold"
