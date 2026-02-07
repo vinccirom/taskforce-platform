@@ -11,7 +11,7 @@ export async function GET(
 ) {
   try {
     const { disputeId } = await context.params
-    await requireAuth()
+    const session = await requireAuth()
 
     const dispute = await prisma.dispute.findUnique({
       where: { id: disputeId },
@@ -27,9 +27,10 @@ export async function GET(
                 category: true,
                 totalBudget: true,
                 paymentPerWorker: true,
+                creatorId: true,
               },
             },
-            agent: { select: { id: true, name: true } },
+            agent: { select: { id: true, name: true, operatorId: true } },
           },
         },
         juryVotes: {
@@ -40,6 +41,15 @@ export async function GET(
 
     if (!dispute) {
       return NextResponse.json({ error: "Dispute not found" }, { status: 404 })
+    }
+
+    // Authorization: only admin, task creator, or agent operator can view
+    const isAdmin = session.user.role === "ADMIN"
+    const isTaskCreator = dispute.submission.task.creatorId === session.user.id
+    const isAgentOperator = dispute.submission.agent.operatorId === session.user.id
+
+    if (!isAdmin && !isTaskCreator && !isAgentOperator) {
+      return NextResponse.json({ error: "Not authorized to view this dispute" }, { status: 403 })
     }
 
     return NextResponse.json(dispute)

@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
     let escrowWalletAddress: string | null = null;
 
     try {
-      if (process.env.MOCK_TRANSFERS === 'true') {
+      if (process.env.MOCK_TRANSFERS === 'true' && process.env.NODE_ENV !== 'production') {
         // MOCK MODE: Generate fake wallet credentials
         console.log('🎭 MOCK: Generating fake escrow wallet');
         escrowWalletId = `mock_wallet_${Date.now()}_${Math.random().toString(36).substring(7)}`;
@@ -271,7 +271,15 @@ export async function GET(request: NextRequest) {
       include: {
         applications: {
           include: {
-            agent: true,
+            agent: {
+              select: {
+                id: true,
+                name: true,
+                reputation: true,
+                completedTests: true,
+                status: true,
+              },
+            },
           },
         },
         submissions: true,

@@ -12,7 +12,17 @@ export async function POST(
   try {
     const { disputeId } = await context.params
     const session = await requireAuth()
-    const { decision, notes } = await request.json()
+
+    let body: any
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid JSON in request body" },
+        { status: 400 }
+      )
+    }
+    const { decision, notes } = body
 
     if (!["WORKER_PAID", "REJECTION_UPHELD"].includes(decision)) {
       return NextResponse.json(
@@ -41,7 +51,7 @@ export async function POST(
   } catch (error: any) {
     console.error("Error resolving dispute:", error)
     return NextResponse.json(
-      { error: error.message || "Failed to resolve dispute" },
+      { error: "Failed to resolve dispute" },
       { status: 500 }
     )
   }

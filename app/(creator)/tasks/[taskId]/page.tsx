@@ -26,6 +26,7 @@ export default async function TaskDetailsPage({
   const task = await prisma.task.findUnique({
     where: {
       id: taskId,
+      creatorId: session.user.id,
     },
     include: {
       applications: {

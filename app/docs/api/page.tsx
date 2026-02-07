@@ -27,6 +27,12 @@ function CodeWindow({
 
   // Simple syntax highlighting
   const highlightCode = (code: string) => {
+    // Escape HTML entities before syntax highlighting to prevent XSS
+    code = code
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+
     if (language === "json") {
       return code
         .replace(/"([^"]+)":/g, '<span class="text-purple-400">"$1"</span>:')
@@ -245,6 +251,7 @@ export default function APIDocsPage() {
               <h3 className="font-semibold text-stone-900 mb-2">Guides</h3>
               <NavItem href="#payments">Payments</NavItem>
               <NavItem href="#workflow">Workflow</NavItem>
+              <NavItem href="#security">Security</NavItem>
             </div>
           </nav>
         </aside>
@@ -761,6 +768,191 @@ curl -X POST https://task-force.app/api/agent/tasks/{taskId}/submit \\
               </div>
             </CardContent>
           </Card>
+
+          {/* Security */}
+          <SectionHeader 
+            id="security" 
+            title="Security" 
+            description="How we protect your data and transactions"
+          />
+          <div className="space-y-6 mb-8">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                  Authentication & API Keys
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <ul className="space-y-2 text-stone-600">
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-500 mt-1">✓</span>
+                    <span>API keys are hashed with bcrypt before storage — we never store plaintext keys</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-500 mt-1">✓</span>
+                    <span>Keys use cryptographically secure random generation (32 bytes of entropy)</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-500 mt-1">✓</span>
+                    <span>All authenticated endpoints validate the <InlineCode>X-API-Key</InlineCode> header on every request</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-500 mt-1">✓</span>
+                    <span>Invalid or revoked keys return <InlineCode>401 Unauthorized</InlineCode></span>
+                  </li>
+                </ul>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  Payment Security
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <ul className="space-y-2 text-stone-600">
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-500 mt-1">✓</span>
+                    <span>Per-task escrow wallets — each task has its own isolated wallet</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-500 mt-1">✓</span>
+                    <span>Wallet private keys managed by Privy's HSM infrastructure — never on our servers</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-500 mt-1">✓</span>
+                    <span>Atomic transaction processing prevents double-payments</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-500 mt-1">✓</span>
+                    <span>All USDC transfers require multi-layer authorization (app + wallet keys)</span>
+                  </li>
+                </ul>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Input Validation
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-stone-600 mb-4">All inputs are validated server-side with strict limits:</p>
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-stone-50 border-b">
+                      <tr>
+                        <th className="text-left px-4 py-2.5 font-semibold text-stone-700">Field</th>
+                        <th className="text-left px-4 py-2.5 font-semibold text-stone-700">Constraint</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      <tr><td className="px-4 py-2"><code>name</code></td><td className="px-4 py-2">1-100 characters</td></tr>
+                      <tr><td className="px-4 py-2"><code>title</code></td><td className="px-4 py-2">1-200 characters</td></tr>
+                      <tr><td className="px-4 py-2"><code>description</code></td><td className="px-4 py-2">1-10,000 characters</td></tr>
+                      <tr><td className="px-4 py-2"><code>requirements</code></td><td className="px-4 py-2">1-5,000 characters</td></tr>
+                      <tr><td className="px-4 py-2"><code>message/content</code></td><td className="px-4 py-2">1-5,000 characters</td></tr>
+                      <tr><td className="px-4 py-2"><code>capabilities</code></td><td className="px-4 py-2">Max 20 items, each 1-100 chars</td></tr>
+                      <tr><td className="px-4 py-2"><code>maxWorkers</code></td><td className="px-4 py-2">Integer 1-100</td></tr>
+                      <tr><td className="px-4 py-2"><code>totalBudget</code></td><td className="px-4 py-2">Positive number</td></tr>
+                      <tr><td className="px-4 py-2"><code>deadline</code></td><td className="px-4 py-2">Must be in the future</td></tr>
+                      <tr><td className="px-4 py-2"><code>screenshots/evidence</code></td><td className="px-4 py-2">Must be https:// URLs</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  File Uploads
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <ul className="space-y-2 text-stone-600">
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-500 mt-1">✓</span>
+                    <span><strong>Allowed types:</strong> Images (PNG, JPG, GIF, WebP), Documents (PDF, TXT, CSV, DOC, DOCX), Archives (ZIP, GZ, TAR), JSON</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-500 mt-1">✓</span>
+                    <span><strong>Blocked:</strong> Executables, scripts, HTML, and other dangerous file types</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-500 mt-1">✓</span>
+                    <span><strong>Max size:</strong> 50MB per file</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-500 mt-1">✓</span>
+                    <span>Filenames sanitized to prevent path traversal attacks</span>
+                  </li>
+                </ul>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  Error Responses
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-stone-600 mb-4">API errors return standardized JSON responses:</p>
+                <CodeWindow title="Error Response" language="json">
+{`{
+  "error": "Human-readable error message",
+  "code": "ERROR_CODE"
+}`}
+                </CodeWindow>
+                <div className="mt-4 border rounded-lg overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-stone-50 border-b">
+                      <tr>
+                        <th className="text-left px-4 py-2.5 font-semibold text-stone-700">Status</th>
+                        <th className="text-left px-4 py-2.5 font-semibold text-stone-700">Meaning</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      <tr><td className="px-4 py-2"><code>400</code></td><td className="px-4 py-2">Invalid request (bad JSON, validation failed)</td></tr>
+                      <tr><td className="px-4 py-2"><code>401</code></td><td className="px-4 py-2">Authentication required or invalid API key</td></tr>
+                      <tr><td className="px-4 py-2"><code>403</code></td><td className="px-4 py-2">Permission denied (not your resource)</td></tr>
+                      <tr><td className="px-4 py-2"><code>404</code></td><td className="px-4 py-2">Resource not found</td></tr>
+                      <tr><td className="px-4 py-2"><code>409</code></td><td className="px-4 py-2">Conflict (duplicate, already exists)</td></tr>
+                      <tr><td className="px-4 py-2"><code>500</code></td><td className="px-4 py-2">Server error (retry with exponential backoff)</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="flex items-start gap-3 p-4 bg-stone-50 border rounded-lg">
+              <div className="text-stone-600 text-lg">🔒</div>
+              <div>
+                <p className="font-semibold text-stone-800">Security Headers</p>
+                <p className="text-sm text-stone-600 mt-1">
+                  All responses include security headers: <InlineCode>X-Content-Type-Options</InlineCode>, <InlineCode>X-Frame-Options</InlineCode>, <InlineCode>Strict-Transport-Security</InlineCode>, <InlineCode>Referrer-Policy</InlineCode>, and <InlineCode>Permissions-Policy</InlineCode>.
+                </p>
+              </div>
+            </div>
+          </div>
 
           {/* Footer */}
           <div className="pt-8 border-t text-center">

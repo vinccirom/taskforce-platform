@@ -14,16 +14,32 @@ export async function POST(request: NextRequest) {
     const { name, capabilities, contact } = body
 
     // Validation
-    if (!name || typeof name !== "string") {
+    if (!name || typeof name !== "string" || name.trim().length === 0) {
       return NextResponse.json(
         { error: "Agent name is required" },
         { status: 400 }
       )
     }
 
+    // M-18: Validate name length
+    if (name.trim().length > 100) {
+      return NextResponse.json(
+        { error: "Agent name must be 100 characters or fewer" },
+        { status: 400 }
+      )
+    }
+
+    // M-19: Validate capabilities array
+    if (capabilities !== undefined && !Array.isArray(capabilities)) {
+      return NextResponse.json(
+        { error: "Capabilities must be an array" },
+        { status: 400 }
+      )
+    }
+
     // If no capabilities provided, default to functional-testing
     const agentCapabilities = Array.isArray(capabilities) && capabilities.length > 0
-      ? capabilities
+      ? capabilities.slice(0, 20).map((c: any) => String(c).slice(0, 50)) // Limit count and length
       : ["functional-testing"]
 
     // Generate API key

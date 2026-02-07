@@ -72,23 +72,27 @@ export async function POST(
       )
     }
 
-    if (submission.status !== SubmissionStatus.SUBMITTED) {
-      return NextResponse.json(
-        { error: 'Submission has already been reviewed' },
-        { status: 400 }
-      )
-    }
-
-    // Update submission status
-    const updatedSubmission = await prisma.submission.update({
-      where: { id: submissionId },
+    // Atomic conditional update: only approve if still SUBMITTED (prevents race condition)
+    const updateResult = await prisma.submission.updateMany({
+      where: { id: submissionId, status: SubmissionStatus.SUBMITTED },
       data: {
         status: SubmissionStatus.APPROVED,
         reviewedAt: new Date(),
         reviewNotes: reviewNotes || null,
         payoutAmount: submission.task.paymentPerWorker,
-        payoutStatus: PayoutStatus.APPROVED,
+        payoutStatus: PayoutStatus.PROCESSING,
       }
+    })
+
+    if (updateResult.count === 0) {
+      return NextResponse.json(
+        { error: 'Submission has already been reviewed' },
+        { status: 409 }
+      )
+    }
+
+    const updatedSubmission = await prisma.submission.findUnique({
+      where: { id: submissionId },
     })
 
     console.log(`✅ Submission ${submissionId} approved by creator`)
@@ -126,11 +130,17 @@ export async function POST(
           console.log(`💸 Escrow released to ${submission.agent.name}: ${transferResult.transactionHash}`)
         } else {
           console.error(`⚠️ Escrow transfer failed for submission ${submissionId}: ${transferResult.error}`)
-          // payoutStatus remains APPROVED — admin can retry manually
+          await prisma.submission.update({
+            where: { id: submissionId },
+            data: { payoutStatus: PayoutStatus.FAILED },
+          })
         }
       } catch (transferError) {
         console.error(`⚠️ Escrow transfer error for submission ${submissionId}:`, transferError)
-        // payoutStatus remains APPROVED — admin can retry manually
+        await prisma.submission.update({
+          where: { id: submissionId },
+          data: { payoutStatus: PayoutStatus.FAILED },
+        })
       }
     }
 

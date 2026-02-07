@@ -26,26 +26,28 @@ export async function authenticateAgent(
     }
   }
 
-  // Find all API keys (we need to check hashes)
-  const apiKeys = await prisma.agentApiKey.findMany({
+  // Use key preview (first 12 chars) to narrow candidates before bcrypt
+  const keyPreview = apiKey.substring(0, 12)
+  const candidates = await prisma.agentApiKey.findMany({
     where: {
-      revokedAt: null, // Only active keys
+      keyPreview: keyPreview,
+      revokedAt: null,
     },
     include: {
       agent: true,
     },
   })
 
-  // Check each key until we find a match
-  for (const keyRecord of apiKeys) {
+  // Verify the matching candidate(s) with bcrypt
+  for (const keyRecord of candidates) {
     const isValid = await verifyApiKey(apiKey, keyRecord.key)
 
     if (isValid) {
-      // Update last used timestamp
-      await prisma.agentApiKey.update({
+      // Update last used timestamp (fire-and-forget)
+      prisma.agentApiKey.update({
         where: { id: keyRecord.id },
         data: { lastUsed: new Date() },
-      })
+      }).catch(() => {})
 
       return { agent: keyRecord.agent }
     }

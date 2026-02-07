@@ -74,7 +74,22 @@ export default async function BrowseTasksPage({
     where,
     orderBy,
     take: 50,
-    include: {
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      category: true,
+      status: true,
+      totalBudget: true,
+      paymentPerWorker: true,
+      paymentType: true,
+      maxWorkers: true,
+      currentWorkers: true,
+      deadline: true,
+      skillsRequired: true,
+      requirements: true,
+      createdAt: true,
+      updatedAt: true,
       _count: {
         select: {
           applications: true

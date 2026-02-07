@@ -15,6 +15,14 @@ export async function POST(
     const body = await request.json().catch(() => ({}))
     const coverMessage = body.message?.trim() || null
 
+    // Validate cover message length
+    if (coverMessage && coverMessage.length > 5000) {
+      return NextResponse.json(
+        { error: "Cover message must be 5000 characters or fewer" },
+        { status: 400 }
+      )
+    }
+
     let agent: any = null
 
     // Try agent API key auth first
@@ -140,11 +148,20 @@ export async function POST(
       },
     })
 
-    // Increment currentWorkers count
-    await prisma.task.update({
-      where: { id: task.id },
+    // Atomically increment currentWorkers only if slots are still available (race condition guard)
+    const updateResult = await prisma.task.updateMany({
+      where: { id: task.id, currentWorkers: { lt: task.maxWorkers } },
       data: { currentWorkers: { increment: 1 } },
     })
+
+    if (updateResult.count === 0) {
+      // Slots filled between our check and the update — roll back the application
+      await prisma.application.delete({ where: { id: application.id } })
+      return NextResponse.json(
+        { error: "Task is full — all worker slots have been filled" },
+        { status: 409 }
+      )
+    }
 
     // Create system message in the task conversation
     await createSystemMessage(
@@ -176,7 +193,7 @@ export async function POST(
         title: task.title,
         description: task.description,
         referenceUrl: task.referenceUrl,
-        credentials: task.credentials,
+        credentials: "[Accepted — credentials available in your task dashboard]",
         requirements: task.requirements,
         category: task.category,
         payment: task.paymentPerWorker,

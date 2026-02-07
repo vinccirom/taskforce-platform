@@ -227,11 +227,16 @@ export function AppShell({ children }: AppShellProps) {
                         Settings
                       </Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <a href="/api/auth/logout" className="flex items-center">
-                        <LogOut className="mr-2 h-4 w-4" />
-                        Sign Out
-                      </a>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        fetch("/api/auth/logout", { method: "POST" }).then(() => {
+                          window.location.href = "/"
+                        })
+                      }}
+                      className="flex items-center cursor-pointer"
+                    >
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Sign Out
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

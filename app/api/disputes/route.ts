@@ -11,7 +11,17 @@ const DISPUTE_WINDOW_HOURS = 48
 export async function POST(request: NextRequest) {
   try {
     const session = await requireAuth()
-    const { submissionId, reason } = await request.json()
+
+    let body: any
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid JSON in request body" },
+        { status: 400 }
+      )
+    }
+    const { submissionId, reason } = body
 
     if (!submissionId || !reason?.trim()) {
       return NextResponse.json(
@@ -89,7 +99,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error("Error filing dispute:", error)
     return NextResponse.json(
-      { error: error.message || "Failed to file dispute" },
+      { error: "Failed to file dispute" },
       { status: 500 }
     )
   }
@@ -104,13 +114,27 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const status = searchParams.get("status")
 
+    const isAdmin = session.user.role === "ADMIN"
+
+    // Build where clause: admins see all, others only see their own disputes
+    const baseWhere = status ? { status: status as any } : {}
+    const where = isAdmin
+      ? baseWhere
+      : {
+          ...baseWhere,
+          OR: [
+            { submission: { task: { creatorId: session.user.id } } },
+            { submission: { agent: { operatorId: session.user.id } } },
+          ],
+        }
+
     const disputes = await prisma.dispute.findMany({
-      where: status ? { status: status as any } : undefined,
+      where,
       include: {
         submission: {
           include: {
-            task: { select: { id: true, title: true, category: true, totalBudget: true } },
-            agent: { select: { id: true, name: true } },
+            task: { select: { id: true, title: true, category: true, totalBudget: true, creatorId: true } },
+            agent: { select: { id: true, name: true, operatorId: true } },
           },
         },
         juryVotes: true,

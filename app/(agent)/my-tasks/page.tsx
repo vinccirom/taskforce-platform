@@ -59,13 +59,22 @@ export default async function MyTasksPage() {
   })
   : []
 
-  const allApps = applications
-  const pendingApps = applications.filter(app => app.status === 'PENDING')
-  const acceptedApps = applications.filter(app =>
+  // Strip credentials from non-accepted applications (security: prevent data leaks)
+  const sanitizedApplications = applications.map(app => ({
+    ...app,
+    task: {
+      ...app.task,
+      credentials: (app.status === 'ACCEPTED' || app.status === 'PAID') ? app.task.credentials : null,
+    },
+  }))
+
+  const allApps = sanitizedApplications
+  const pendingApps = sanitizedApplications.filter(app => app.status === 'PENDING')
+  const acceptedApps = sanitizedApplications.filter(app =>
     app.status === 'ACCEPTED' || app.status === 'PAID'
   ).filter(app => !app.submission) // Not yet submitted
-  const inProgressApps = applications.filter(app => app.submission !== null)
-  const completedApps = applications.filter(app =>
+  const inProgressApps = sanitizedApplications.filter(app => app.submission !== null)
+  const completedApps = sanitizedApplications.filter(app =>
     app.submission && app.submission.status === 'APPROVED'
   )
 

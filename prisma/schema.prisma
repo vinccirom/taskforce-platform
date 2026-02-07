@@ -389,8 +389,10 @@ enum SubmissionStatus {
 
 enum PayoutStatus {
   PENDING
+  PROCESSING
   APPROVED
   PAID
+  FAILED
   DISPUTED
   REFUNDED
 }

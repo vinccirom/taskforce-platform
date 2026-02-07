@@ -17,12 +17,16 @@ const ALLOWED_TYPES = new Set([
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   // Archives
   "application/zip", "application/gzip", "application/x-tar",
-  // Code
-  "text/javascript", "text/typescript", "text/html", "text/css",
-  "application/json", "text/x-python",
+  // Data
+  "application/json",
 ])
 
-const BLOCKED_EXTENSIONS = [".exe", ".bat", ".sh", ".msi", ".dmg", ".app", ".cmd", ".com"]
+// Allowlist approach: only these extensions are permitted
+const ALLOWED_EXTENSIONS = new Set([
+  ".png", ".jpg", ".jpeg", ".gif", ".webp",
+  ".pdf", ".txt", ".csv", ".doc", ".docx",
+  ".zip", ".gz", ".tar", ".json",
+])
 
 export async function POST(request: NextRequest) {
   try {
@@ -84,15 +88,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check blocked extensions
+    // Check extension via allowlist
     const filename = file.name.toLowerCase()
-    for (const ext of BLOCKED_EXTENSIONS) {
-      if (filename.endsWith(ext)) {
-        return NextResponse.json(
-          { error: "Executable files are not allowed" },
-          { status: 400 }
-        )
-      }
+    const ext = filename.includes('.') ? '.' + filename.split('.').pop() : ''
+    if (!ext || !ALLOWED_EXTENSIONS.has(ext)) {
+      return NextResponse.json(
+        { error: `File extension "${ext}" is not allowed` },
+        { status: 400 }
+      )
     }
 
     // Check allowed content types
@@ -105,28 +108,30 @@ export async function POST(request: NextRequest) {
 
     const blobToken = process.env.BLOB_READ_WRITE_TOKEN || ""
 
-    // Dev mode: save locally if using placeholder token
-    if (blobToken.includes("placeholder")) {
+    // Sanitize filename for all paths
+    const sanitizedName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`
+
+    // Dev mode: save locally if using placeholder token (never in production)
+    if (blobToken.includes("placeholder") && process.env.NODE_ENV !== "production") {
       const bytes = await file.arrayBuffer()
       const buffer = Buffer.from(bytes)
 
       const uploadsDir = join(process.cwd(), "public", "uploads")
       await mkdir(uploadsDir, { recursive: true })
 
-      const uniqueName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`
-      const filePath = join(uploadsDir, uniqueName)
+      const filePath = join(uploadsDir, sanitizedName)
       await writeFile(filePath, buffer)
 
       return NextResponse.json({
-        url: `/uploads/${uniqueName}`,
+        url: `/uploads/${sanitizedName}`,
         filename: file.name,
         size: file.size,
         contentType: file.type,
       })
     }
 
-    // Production: upload to Vercel Blob
-    const blob = await put(file.name, file, {
+    // Production: upload to Vercel Blob with sanitized filename
+    const blob = await put(sanitizedName, file, {
       access: "public",
       token: blobToken,
     })

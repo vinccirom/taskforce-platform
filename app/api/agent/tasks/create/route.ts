@@ -67,7 +67,16 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const body = await request.json()
+    let body: any
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json(
+        { error: 'Invalid JSON in request body' },
+        { status: 400 }
+      )
+    }
+
     const {
       title,
       description,
@@ -92,9 +101,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // M-20: Length and value constraints
+    if (title.length > 200) {
+      return NextResponse.json(
+        { error: 'Title must be 200 characters or fewer' },
+        { status: 400 }
+      )
+    }
+
     if (!description || typeof description !== 'string') {
       return NextResponse.json(
         { error: 'Description is required' },
+        { status: 400 }
+      )
+    }
+
+    if (description.length > 10000) {
+      return NextResponse.json(
+        { error: 'Description must be 10,000 characters or fewer' },
         { status: 400 }
       )
     }
@@ -120,8 +144,28 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (totalBudget > 1000000) {
+      return NextResponse.json(
+        { error: 'Total budget exceeds maximum allowed' },
+        { status: 400 }
+      )
+    }
+
     const taskPaymentType = paymentType || PaymentType.FIXED
-    const taskMaxWorkers = maxWorkers || 1
+    const taskMaxWorkers = typeof maxWorkers === 'number' && maxWorkers >= 1 && maxWorkers <= 100
+      ? Math.floor(maxWorkers)
+      : 1
+
+    // Validate deadline is in the future
+    if (deadline) {
+      const deadlineDate = new Date(deadline)
+      if (isNaN(deadlineDate.getTime()) || deadlineDate <= new Date()) {
+        return NextResponse.json(
+          { error: 'Deadline must be a valid future date' },
+          { status: 400 }
+        )
+      }
+    }
 
     // Validate milestones if payment type is MILESTONE
     if (taskPaymentType === PaymentType.MILESTONE) {
@@ -187,7 +231,7 @@ export async function POST(request: NextRequest) {
     let escrowWalletAddress: string | null = null
 
     try {
-      if (process.env.MOCK_TRANSFERS === 'true') {
+      if (process.env.MOCK_TRANSFERS === 'true' && process.env.NODE_ENV !== 'production') {
         // MOCK MODE: Generate fake wallet credentials
         console.log('🎭 MOCK: Generating fake escrow wallet')
         escrowWalletId = `mock_wallet_${Date.now()}_${Math.random().toString(36).substring(7)}`

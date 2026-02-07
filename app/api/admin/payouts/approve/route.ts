@@ -7,13 +7,21 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getAuthUser } from '@/lib/auth';
 import { transferUsdcToAgent } from '@/lib/payment';
-import { PayoutStatus, SubmissionStatus } from '@prisma/client';
+import { PayoutStatus, SubmissionStatus, UserRole } from '@prisma/client';
 
 export async function POST(request: NextRequest) {
   try {
-    // TODO: Add admin authentication middleware
-    // For now, this is unprotected (add auth in production!)
+    // Admin authentication
+    const privyUser = await getAuthUser()
+    if (!privyUser) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 })
+    }
+    const caller = await prisma.user.findUnique({ where: { privyId: privyUser.userId } })
+    if (!caller || caller.role !== UserRole.ADMIN) {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 })
+    }
 
     const { submissionId } = await request.json();
 
@@ -28,9 +36,29 @@ export async function POST(request: NextRequest) {
     const submission = await prisma.submission.findUnique({
       where: { id: submissionId },
       include: {
-        agent: true,
-        task: true,
-        application: true,
+        agent: {
+          select: {
+            id: true,
+            name: true,
+            walletAddress: true,
+            status: true,
+            totalEarnings: true,
+          },
+        },
+        task: {
+          select: {
+            id: true,
+            title: true,
+            totalBudget: true,
+            paymentPerWorker: true,
+            maxWorkers: true,
+            escrowWalletId: true,
+            escrowWalletAddress: true,
+          },
+        },
+        application: {
+          select: { id: true },
+        },
       },
     });
 
@@ -63,8 +91,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Calculate payout amount (from task payment)
-    const payoutAmount = submission.task.paymentPerWorker ?? submission.task.totalBudget;
+    // Calculate payout amount (from task payment, with safe fallback)
+    const payoutAmount = submission.task.paymentPerWorker ?? (submission.task.totalBudget / (submission.task.maxWorkers || 1));
 
     console.log(`Processing payout for submission ${submissionId}:`);
     console.log(`  Agent: ${submission.agent.name} (${submission.agent.id})`);

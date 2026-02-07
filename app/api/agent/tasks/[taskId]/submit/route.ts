@@ -137,8 +137,10 @@ export async function POST(
       },
     })
 
-    // Create evidence records for uploaded files
-    const screenshotUrls: string[] = screenshots || []
+    // Create evidence records for uploaded files (L-07: validate URLs)
+    const screenshotUrls: string[] = (screenshots || []).filter(
+      (url: string) => typeof url === "string" && /^https:\/\/.+/.test(url)
+    )
     if (screenshotUrls.length > 0) {
       await prisma.evidence.createMany({
         data: screenshotUrls.map((url: string) => ({

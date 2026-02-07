@@ -7,11 +7,20 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { PayoutStatus, SubmissionStatus, MilestoneStatus } from '@prisma/client';
+import { getAuthUser } from '@/lib/auth';
+import { PayoutStatus, SubmissionStatus, MilestoneStatus, UserRole } from '@prisma/client';
 
 export async function GET(request: NextRequest) {
   try {
-    // TODO: Add admin authentication middleware
+    // Admin authentication
+    const privyUser = await getAuthUser()
+    if (!privyUser) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 })
+    }
+    const caller = await prisma.user.findUnique({ where: { privyId: privyUser.userId } })
+    if (!caller || caller.role !== UserRole.ADMIN) {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 })
+    }
 
     // Get all approved submissions with pending payouts (for FIXED payment tasks)
     const pendingSubmissions = await prisma.submission.findMany({

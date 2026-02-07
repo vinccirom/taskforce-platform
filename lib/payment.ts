@@ -63,8 +63,8 @@ export async function transferUsdcToAgent(
     };
   }
 
-  // MOCK MODE: For testing without real USDC
-  if (process.env.MOCK_TRANSFERS === 'true') {
+  // MOCK MODE: For testing without real USDC (disabled in production)
+  if (process.env.MOCK_TRANSFERS === 'true' && process.env.NODE_ENV !== 'production') {
     console.log(`🎭 MOCK: Simulating ${amountUsdc} USDC transfer to ${agentWalletAddress}`);
     await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate delay
     const mockTxHash = `mock_${Date.now()}_${Math.random().toString(36).substring(7)}`;

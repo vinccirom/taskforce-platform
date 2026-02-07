@@ -79,10 +79,13 @@ export async function POST(
       },
     });
 
-    // Create evidence records if provided
-    if (evidenceUrls && Array.isArray(evidenceUrls) && evidenceUrls.length > 0) {
+    // Create evidence records if provided (L-07: validate URLs — https only)
+    const validUrls = (evidenceUrls || []).filter(
+      (url: string) => typeof url === "string" && /^https:\/\/.+/.test(url)
+    )
+    if (validUrls.length > 0) {
       await prisma.evidence.createMany({
-        data: evidenceUrls.map((url: string) => ({
+        data: validUrls.map((url: string) => ({
           milestoneId: milestone.id,
           url,
           type: detectEvidenceType(url),

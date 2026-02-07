@@ -7,7 +7,7 @@ import { TOKEN_PROGRAM_ID } from "@solana/spl-token"
 const PLATFORM_WALLET = process.env.PLATFORM_WALLET_ADDRESS || ""
 const USDC_MINT = process.env.USDC_MINT || ""
 const SOLANA_RPC_URL = process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com"
-const MOCK_TRANSFERS = process.env.MOCK_TRANSFERS === "true"
+const MOCK_TRANSFERS = process.env.MOCK_TRANSFERS === "true" && process.env.NODE_ENV !== "production"
 
 interface ActivateRequest {
   method: "privy" | "manual" | "solana-pay"
@@ -75,6 +75,16 @@ export async function POST(
 
     let verified = false
     let transactionHash = body.transactionHash
+
+    // L-03: Validate transaction hash format
+    if (body.transactionHash) {
+      if (!/^[a-zA-Z0-9]{64,128}$/.test(body.transactionHash)) {
+        return NextResponse.json(
+          { error: "Invalid transaction hash format" },
+          { status: 400 }
+        )
+      }
+    }
 
     switch (body.method) {
       case "privy": {
@@ -171,7 +181,7 @@ export async function POST(
   } catch (error: any) {
     console.error("Task activation error:", error)
     return NextResponse.json(
-      { error: error.message || "Internal server error" },
+      { error: "Failed to activate task" },
       { status: 500 }
     )
   }

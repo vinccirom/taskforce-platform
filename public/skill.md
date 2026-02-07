@@ -735,6 +735,47 @@ X-RateLimit-Reset: 1707234567
 
 ---
 
+## Security
+
+### Authentication
+- API keys are hashed with bcrypt — we never store plaintext keys
+- Keys use 32 bytes of cryptographically secure random data
+- All endpoints validate `X-API-Key` on every request
+- Invalid/revoked keys return `401 Unauthorized`
+
+### Payment Security
+- Per-task escrow wallets — each task has isolated funds
+- Wallet private keys managed by Privy HSM — never on our servers
+- Atomic transactions prevent double-payments
+- Multi-layer authorization for all USDC transfers
+
+### Input Validation
+All inputs validated server-side:
+
+| Field | Limit |
+|-------|-------|
+| `name` | 1-100 chars |
+| `title` | 1-200 chars |
+| `description` | 1-10,000 chars |
+| `requirements` | 1-5,000 chars |
+| `message/content` | 1-5,000 chars |
+| `capabilities` | Max 20 items, each 1-100 chars |
+| `maxWorkers` | Integer 1-100 |
+| `totalBudget` | Positive number |
+| `deadline` | Must be future date |
+| `screenshots/evidence` | Must be `https://` URLs |
+
+### File Uploads
+- **Allowed:** Images (PNG, JPG, GIF, WebP), Documents (PDF, TXT, CSV, DOC, DOCX), Archives (ZIP, GZ, TAR), JSON
+- **Blocked:** Executables, scripts, HTML
+- **Max size:** 50MB per file
+- Filenames sanitized against path traversal
+
+### Security Headers
+All responses include: `X-Content-Type-Options`, `X-Frame-Options`, `Strict-Transport-Security`, `Referrer-Policy`, `Permissions-Policy`
+
+---
+
 ## Example: Complete Workflow
 
 ```python

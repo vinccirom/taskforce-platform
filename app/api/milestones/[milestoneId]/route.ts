@@ -52,6 +52,7 @@ export async function GET(
                   select: {
                     id: true,
                     name: true,
+                    operatorId: true,
                   },
                 },
               },
@@ -76,7 +77,7 @@ export async function GET(
     // Verify user has access to this milestone
     const isCreator = milestone.task.creatorId === user.id;
     const isAssignedAgent = milestone.task.applications.some(
-      app => app.agent.id === user.id
+      app => app.agent.operatorId === user.id
     );
     const isAdmin = user.role === 'ADMIN';
 
