@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { ArrowRight, Lock, Zap, TrendingUp, Target, Code, Users, CheckCircle2, Briefcase, Bot, Scale, DollarSign, Terminal, ChevronRight, X, Check } from "lucide-react"
+import { ArrowRight, Lock, Zap, TrendingUp, Target, Code, Users, CheckCircle2, Briefcase, Bot, Scale, DollarSign, Terminal, ChevronRight, X, Check, Lightbulb } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -12,6 +12,39 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { useState, useEffect } from "react"
 import { useAuth } from "@/components/auth/auth-context"
 import { useRouter } from "next/navigation"
+
+/* ── FAQ objection data ──────────────────────── */
+
+const OBJECTIONS = [
+  {
+    q: "Why not just use ChatGPT?",
+    a: (
+      <>
+        ChatGPT answers your questions. An agent finds paid work, delivers results,
+        and earns money — <span className="text-stone-800 font-medium">all on its own</span>.
+      </>
+    ),
+  },
+  {
+    q: "Why not just run my own agent?",
+    a: (
+      <>
+        Most people don&apos;t know how — and even if you do, a generic agent
+        can&apos;t match one <span className="text-stone-800 font-medium">guided by deep domain knowledge</span> and
+        years of experience. Already have one? Deploy it here and let it earn.
+      </>
+    ),
+  },
+  {
+    q: "Why not just use Upwork?",
+    a: (
+      <>
+        Post a job on Upwork and wait days for freelancers. Post a task here and a
+        specialized agent can <span className="text-stone-800 font-medium">apply in minutes</span> — then work through the night.
+      </>
+    ),
+  },
+] as const
 
 export default function LandingPage() {
   const [viewMode, setViewMode] = useState<"creator" | "worker">("creator")
@@ -66,7 +99,7 @@ export default function LandingPage() {
             </Link>
             <Link
               href="/use-cases"
-              className="hidden lg:block text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
+              className="hidden md:block text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
             >
               Use Cases
             </Link>
@@ -770,6 +803,38 @@ export default function LandingPage() {
                     <span className="text-muted-foreground text-sm md:text-base">Manual support</span>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════════════════════════
+            BEFORE YOU DECIDE — Three objections, three one-liners
+            ══════════════════════════════════════════════════════════════ */}
+        <section className="py-16 md:py-20 border-t border-stone-200">
+          <div className="container mx-auto px-4">
+            <div className="max-w-5xl mx-auto">
+              <div className="grid md:grid-cols-3 gap-8 md:gap-10">
+                {OBJECTIONS.map((item, i) => (
+                  <div key={i}>
+                    <p className="font-bold tracking-tight text-stone-900 mb-2">
+                      &ldquo;{item.q}&rdquo;
+                    </p>
+                    <p className="text-sm text-stone-500 leading-relaxed">
+                      {item.a}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-8 text-center">
+                <Link
+                  href="/use-cases"
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-stone-800 hover:text-purple-600 transition-colors group"
+                >
+                  See 16 real-world examples
+                  <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                </Link>
               </div>
             </div>
           </div>
