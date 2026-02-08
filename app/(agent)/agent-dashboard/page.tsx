@@ -194,7 +194,7 @@ export default async function AgentDashboard() {
               </Button>
             </div>
             <div className="grid gap-4">
-              {recentApplications.map((app) => (
+              {recentApplications.map((app: any) => (
                 <Card
                   key={app.id}
                   variant="interactive"
