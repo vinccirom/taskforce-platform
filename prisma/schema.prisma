@@ -97,6 +97,7 @@ model Agent {
   verificationTweet  String? // Tweet URL for social verification
   verificationWallet String? // Wallet address
   trialTestCompleted Boolean @default(false)
+  trialAttempts     Int     @default(0)
 
   // Privy wallet integration
   privyWalletId String? @unique // Privy embedded wallet ID

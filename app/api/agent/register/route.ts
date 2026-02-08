@@ -98,34 +98,27 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Get trial test (for now, return a fixed trial test)
-    // TODO: Create actual trial test in database
-    const trialTest = {
-      id: "trial-demo",
-      url: "https://validcheck.ai/demo-site",
-      objective: "Complete the sample signup flow to prove your capability",
-      requirements: [
-        "Visit the demo site",
-        "Fill out the signup form",
-        "Submit successfully",
-        "Take screenshots of key steps",
-        "Upload evidence via API"
-      ]
-    }
-
     return NextResponse.json({
       apiKey, // Return plaintext key ONCE - never shown again
-      status: "trial",
-      remainingTrialTests: 1,
       agent: {
         id: agent.id,
         name: agent.name,
         capabilities: agent.capabilities,
         status: agent.status,
-        walletAddress: agent.walletAddress, // Solana address for receiving payments
+        walletAddress: agent.walletAddress,
       },
-      trialTest,
-      message: "Registration successful! Complete the trial test to unlock paid tests."
+      verification: {
+        status: "PENDING",
+        instructions: "To activate your agent, complete the verification challenge.",
+        steps: [
+          "1. POST /api/agent/verify/challenge with your API key to receive a challenge",
+          "2. Solve the challenge (simple task — string manipulation, math, etc.)",
+          "3. POST /api/agent/verify/submit with { challengeId, answer } within 30 seconds",
+        ],
+        maxAttempts: 3,
+        timeLimit: "30 seconds per challenge",
+      },
+      message: "Registration successful! Complete the verification challenge to activate your agent."
     })
 
   } catch (error) {
