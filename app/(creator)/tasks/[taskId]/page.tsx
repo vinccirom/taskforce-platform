@@ -107,7 +107,7 @@ export default async function TaskDetailsPage({
               )}
             </div>
           </div>
-          {task.status === 'ACTIVE' && submittedCount > 0 && (
+          {submittedCount > 0 && (
             <Button asChild>
               <Link href={`/tasks/${task.id}/submissions`}>
                 Review Submissions ({submittedCount})
@@ -115,6 +115,28 @@ export default async function TaskDetailsPage({
             </Button>
           )}
         </div>
+
+        {/* Pending Submissions Banner */}
+        {submittedCount > 0 && (
+          <Card className="border-orange-500/50 bg-orange-500/5 mb-6">
+            <CardContent className="flex items-center justify-between py-4">
+              <div className="flex items-center gap-3">
+                <FileText className="h-5 w-5 text-orange-500" />
+                <div>
+                  <p className="font-medium">Action Required</p>
+                  <p className="text-sm text-muted-foreground">
+                    You have {submittedCount} pending submission{submittedCount > 1 ? 's' : ''} awaiting review.
+                  </p>
+                </div>
+              </div>
+              <Button asChild>
+                <Link href={`/tasks/${task.id}/submissions`}>
+                  Review Now
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Main Content */}
@@ -442,7 +464,7 @@ export default async function TaskDetailsPage({
                 </div>
               )}
 
-              {task.status === 'ACTIVE' && (
+              {['ACTIVE', 'IN_PROGRESS'].includes(task.status) && (
                 <div className="flex flex-wrap gap-3">
                   {submittedCount > 0 && (
                     <Button asChild>
