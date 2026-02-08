@@ -1,6 +1,7 @@
 import { getAuthUser } from "@/lib/auth"
 import { authenticateAgent } from "@/lib/api-auth"
 import { prisma } from "@/lib/prisma"
+import { createNotification } from "@/lib/notifications"
 import { NextRequest, NextResponse } from "next/server"
 
 // Helper to get the authenticated user ID (human or agent's operator)
@@ -28,14 +29,13 @@ async function getParticipant(request: NextRequest) {
   return { userId: user.id, agentId: null }
 }
 
-// Participant check helper
+// Participant check helper — any applicant (any status) or creator
 async function isTaskParticipant(taskId: string, userId: string) {
   const task = await prisma.task.findUnique({
     where: { id: taskId },
     include: {
       applications: {
-        where: { status: 'ACCEPTED' },
-        include: { agent: { select: { operatorId: true } } }
+        include: { agent: { select: { id: true, operatorId: true } } }
       }
     }
   })
@@ -44,9 +44,9 @@ async function isTaskParticipant(taskId: string, userId: string) {
   // Creator always allowed
   if (task.creatorId === userId) return { allowed: true, task }
   
-  // Accepted workers allowed (check agent's operator)
-  const isWorker = task.applications.some(app => app.agent.operatorId === userId)
-  return { allowed: isWorker, task }
+  // Any applicant allowed (check agent's operator)
+  const isApplicant = task.applications.some(app => app.agent.operatorId === userId)
+  return { allowed: isApplicant, task }
 }
 
 // GET /api/tasks/[taskId]/messages
@@ -91,6 +91,12 @@ export async function GET(
       orderBy: { createdAt: 'asc' },
       include: {
         sender: {
+          select: {
+            id: true,
+            name: true,
+          }
+        },
+        agent: {
           select: {
             id: true,
             name: true,
@@ -165,6 +171,7 @@ export async function POST(
       data: {
         taskId,
         senderId: participant.userId,
+        agentId: participant.agentId,
         content,
         type: "USER"
       },
@@ -177,6 +184,41 @@ export async function POST(
         }
       }
     })
+
+    // Create notifications for other participants
+    const { task } = await isTaskParticipant(taskId, participant.userId)
+    if (task) {
+      const taskLink = `/tasks/${taskId}`
+      // Notify creator if sender is not creator
+      if (task.creatorId !== participant.userId) {
+        const existing = await prisma.notification.findFirst({
+          where: { userId: task.creatorId, type: "NEW_MESSAGE", link: taskLink, read: false }
+        })
+        if (!existing) {
+          await createNotification({ userId: task.creatorId, type: "NEW_MESSAGE", title: "New Message", message: `New message in task "${task.title || taskId}"`, link: taskLink })
+        }
+      }
+      // Notify agents who applied
+      for (const app of task.applications) {
+        if (app.agent.operatorId === participant.userId) continue
+        if (app.agent.operatorId) {
+          const existing = await prisma.notification.findFirst({
+            where: { userId: app.agent.operatorId, type: "NEW_MESSAGE", link: taskLink, read: false }
+          })
+          if (!existing) {
+            await createNotification({ userId: app.agent.operatorId, agentId: app.agent.id, type: "NEW_MESSAGE", title: "New Message", message: `New message in task "${task.title || taskId}"`, link: taskLink })
+          }
+        } else {
+          // Agent without operator — notify by agentId
+          const existing = await prisma.notification.findFirst({
+            where: { agentId: app.agent.id, type: "NEW_MESSAGE", link: taskLink, read: false }
+          })
+          if (!existing) {
+            await createNotification({ agentId: app.agent.id, type: "NEW_MESSAGE", title: "New Message", message: `New message in task "${task.title || taskId}"`, link: taskLink })
+          }
+        }
+      }
+    }
 
     return NextResponse.json({ message })
   } catch (error) {

@@ -122,9 +122,11 @@ model Agent {
   workerType WorkerType @default(AGENT)
 
   // Relations
-  applications Application[]
-  submissions  Submission[]
-  apiKeys      AgentApiKey[]
+  applications  Application[]
+  submissions   Submission[]
+  apiKeys       AgentApiKey[]
+  messages      TaskMessage[]
+  notifications Notification[]
 
   @@index([operatorId])
   @@index([status])
@@ -209,6 +211,9 @@ model TaskMessage {
   task      Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
   senderId  String?
   sender    User?       @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  agentId   String?
+  agent     Agent?      @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  agentName String?
   content   String      @db.Text
   type      MessageType @default(USER)
   createdAt DateTime    @default(now())
@@ -403,8 +408,10 @@ enum PayoutStatus {
 
 model Notification {
   id        String           @id @default(cuid())
-  userId    String
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agentId   String?
+  agent     Agent?           @relation(fields: [agentId], references: [id], onDelete: Cascade)
   type      NotificationType
   title     String
   message   String           @db.Text
@@ -414,6 +421,8 @@ model Notification {
 
   @@index([userId, read])
   @@index([userId, createdAt])
+  @@index([agentId, read])
+  @@index([agentId, createdAt])
 }
 
 enum NotificationType {
@@ -426,6 +435,7 @@ enum NotificationType {
   DISPUTE_FILED
   DISPUTE_RESOLVED
   TASK_COMPLETED
+  NEW_MESSAGE
 }
 
 // ===== AGENT API KEYS =====

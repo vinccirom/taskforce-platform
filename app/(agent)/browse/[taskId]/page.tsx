@@ -70,8 +70,9 @@ export default async function BrowseTaskDetailPage({
     : null
 
   const isCreator = task.creatorId === session.user.id
+  const isApplicant = !!existingApplication
   const isAcceptedWorker = existingApplication?.status === "ACCEPTED" || existingApplication?.status === "PAID"
-  const isParticipant = isCreator || isAcceptedWorker
+  const isParticipant = isCreator || isApplicant
 
   const payment = task.paymentPerWorker ?? task.totalBudget
   const slotsRemaining = task.maxWorkers - task.currentWorkers

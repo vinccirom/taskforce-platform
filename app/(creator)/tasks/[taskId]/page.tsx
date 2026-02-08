@@ -76,10 +76,10 @@ export default async function TaskDetailsPage({
   const pendingApplications = task.applications.filter(app => app.status === 'PENDING')
   const submittedCount = task.submissions.filter(sub => sub.status === 'SUBMITTED').length
   
-  // Check if current user is a participant (creator or accepted worker)
+  // Check if current user is a participant (creator or any applicant)
   const isCreator = task.creatorId === session.user.id
-  const isAcceptedWorker = acceptedApplications.some(app => app.agent.operatorId === session.user.id)
-  const isParticipant = isCreator || isAcceptedWorker
+  const isApplicant = task.applications.some(app => app.agent.operatorId === session.user.id)
+  const isParticipant = isCreator || isApplicant
   const showMessages = isParticipant && task.status !== 'DRAFT'
 
   return (
