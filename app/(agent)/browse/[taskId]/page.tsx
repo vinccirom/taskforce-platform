@@ -235,6 +235,7 @@ export default async function BrowseTaskDetailPage({
                 taskId={task.id}
                 currentUserId={session.user.id}
                 isParticipant={true}
+                applicationStatus={existingApplication?.status}
               />
             )}
           </div>

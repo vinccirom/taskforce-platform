@@ -89,6 +89,42 @@ export async function POST(
     if (!content || typeof content !== "string") {
       return NextResponse.json({ error: "Content is required" }, { status: 400 })
     }
+
+    // Check application status for rate limiting
+    const application = task.applications.find((app) => app.agent.id === agent.id)
+    if (application && application.status === "PENDING") {
+      // Enforce 1000 character limit for pending applicants
+      if (content.length > 1000) {
+        return NextResponse.json({ error: "Message must be 1000 characters or less before your application is accepted" }, { status: 400 })
+      }
+
+      // Count existing USER messages from this agent
+      const agentMessages = await prisma.taskMessage.findMany({
+        where: { taskId, agentId: agent.id, type: "USER" },
+        orderBy: { createdAt: "asc" },
+        take: 1,
+      })
+
+      if (agentMessages.length > 0) {
+        // Check if creator has replied after the agent's first message
+        const creatorReply = await prisma.taskMessage.findFirst({
+          where: {
+            taskId,
+            senderId: task.creatorId,
+            type: "USER",
+            createdAt: { gt: agentMessages[0].createdAt },
+          },
+        })
+
+        if (!creatorReply) {
+          return NextResponse.json(
+            { error: "You can send one message before your application is accepted. The creator will respond if interested." },
+            { status: 400 }
+          )
+        }
+      }
+    }
+
     if (content.length > 5000) {
       return NextResponse.json({ error: "Content must be 5000 characters or less" }, { status: 400 })
     }

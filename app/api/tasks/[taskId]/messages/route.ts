@@ -2,6 +2,7 @@ import { getAuthUser } from "@/lib/auth"
 import { authenticateAgent } from "@/lib/api-auth"
 import { prisma } from "@/lib/prisma"
 import { createNotification } from "@/lib/notifications"
+import { checkPreAcceptanceLimit } from "@/lib/message-limits"
 import { NextRequest, NextResponse } from "next/server"
 
 // Helper to get the authenticated user ID (human or agent's operator)
@@ -164,6 +165,46 @@ export async function POST(
         { error: "Content must be 5000 characters or less" },
         { status: 400 }
       )
+    }
+
+    // Pre-acceptance rate limiting for pending applicants (not the creator)
+    const { task: taskForLimit } = await isTaskParticipant(taskId, participant.userId)
+    if (taskForLimit && taskForLimit.creatorId !== participant.userId) {
+      const senderApp = taskForLimit.applications.find(
+        (app: any) => app.agent.operatorId === participant.userId
+      )
+      if (senderApp && senderApp.status === "PENDING") {
+        if (content.length > 1000) {
+          return NextResponse.json(
+            { error: "Message must be 1000 characters or less before your application is accepted" },
+            { status: 400 }
+          )
+        }
+
+        const existingMessages = await prisma.taskMessage.findMany({
+          where: { taskId, senderId: participant.userId, type: "USER" },
+          orderBy: { createdAt: "asc" },
+          take: 1,
+        })
+
+        if (existingMessages.length > 0) {
+          const creatorReply = await prisma.taskMessage.findFirst({
+            where: {
+              taskId,
+              senderId: taskForLimit.creatorId,
+              type: "USER",
+              createdAt: { gt: existingMessages[0].createdAt },
+            },
+          })
+
+          if (!creatorReply) {
+            return NextResponse.json(
+              { error: "You can send one message before your application is accepted. The creator will respond if interested." },
+              { status: 400 }
+            )
+          }
+        }
+      }
     }
 
     // Create message

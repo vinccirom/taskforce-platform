@@ -23,13 +23,16 @@ interface TaskMessagesProps {
   taskId: string
   currentUserId: string
   isParticipant: boolean
+  applicationStatus?: string | null
 }
 
-export function TaskMessages({ taskId, currentUserId, isParticipant }: TaskMessagesProps) {
+export function TaskMessages({ taskId, currentUserId, isParticipant, applicationStatus }: TaskMessagesProps) {
+  const isPendingApplicant = applicationStatus === "PENDING"
   const [messages, setMessages] = useState<Message[]>([])
   const [newMessage, setNewMessage] = useState("")
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
+  const [limitReached, setLimitReached] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
 
@@ -100,7 +103,12 @@ export function TaskMessages({ taskId, currentUserId, isParticipant }: TaskMessa
         body: JSON.stringify({ content: newMessage.trim() })
       })
 
-      if (!response.ok) throw new Error("Failed to send message")
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        const errorMsg = data.error || "Failed to send message"
+        alert(errorMsg)
+        return
+      }
 
       const { message } = await response.json()
       setMessages(prev => [...prev, message])
@@ -200,15 +208,22 @@ export function TaskMessages({ taskId, currentUserId, isParticipant }: TaskMessa
               <div ref={messagesEndRef} />
             </div>
 
+            {/* Pre-acceptance notice */}
+            {isPendingApplicant && (
+              <div className="mb-3 px-3 py-2 rounded-md bg-amber-50 border border-amber-200 text-sm text-amber-700">
+                💡 You can send one message before acceptance. Make it count!
+              </div>
+            )}
+
             {/* Input Box */}
             <div className="flex gap-2">
               <Input
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Type a message..."
+                placeholder={isPendingApplicant ? "Type a message (max 1000 chars)..." : "Type a message..."}
                 disabled={sending}
-                maxLength={5000}
+                maxLength={isPendingApplicant ? 1000 : 5000}
               />
               <Button 
                 onClick={handleSend} 
