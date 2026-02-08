@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import { getAuthUser, getPrivyUser, extractPrivyUserInfo } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { privyServer, PLATFORM_KEY_QUORUM_ID } from "@/lib/privy-server"
 
 export type UserRole = 'CREATOR' | 'AGENT_OPERATOR' | 'ADMIN'
 
@@ -54,6 +55,8 @@ export async function requireAuth() {
     let privyEmail: string | null = null
     let solanaAddress: string | null = null
     let evmAddress: string | null = null
+
+    // 1. Get user info from Privy
     try {
       const privyUser = await getPrivyUser(privyAuth.userId)
       if (privyUser) {
@@ -64,6 +67,31 @@ export async function requireAuth() {
       }
     } catch (e) {
       // Non-critical
+    }
+
+    // 2. Create embedded wallets server-side if Privy didn't auto-create them
+    if (!solanaAddress) {
+      try {
+        const solWallet = await privyServer.wallets().create({
+          chain_type: 'solana',
+          owner_id: privyAuth.userId,
+        })
+        solanaAddress = solWallet.address
+      } catch (e: any) {
+        console.error('Failed to create Solana wallet for user:', e?.message)
+      }
+    }
+
+    if (!evmAddress) {
+      try {
+        const evmWallet = await privyServer.wallets().create({
+          chain_type: 'ethereum',
+          owner_id: privyAuth.userId,
+        })
+        evmAddress = evmWallet.address
+      } catch (e: any) {
+        console.error('Failed to create EVM wallet for user:', e?.message)
+      }
     }
 
     const email = privyEmail ?? `${privyAuth.userId.replace('did:privy:', '')}@privy.io`
@@ -92,14 +120,44 @@ export async function requireAuth() {
     }
   }
 
+  // Sync wallets if user exists but is missing wallet addresses
+  if (user && (!user.walletAddress || !user.evmWalletAddress)) {
+    try {
+      const privyUser = await getPrivyUser(privyAuth.userId)
+      if (privyUser) {
+        const info = extractPrivyUserInfo(privyUser)
+        const updates: Record<string, string> = {}
+        if (!user.walletAddress && info.solanaWallet?.address) {
+          updates.walletAddress = info.solanaWallet.address
+        }
+        const evmW = info.wallets.find(w => w.chain === 'ethereum')
+        if (!user.evmWalletAddress && evmW?.address) {
+          updates.evmWalletAddress = evmW.address
+        }
+        if (Object.keys(updates).length > 0) {
+          user = await prisma.user.update({
+            where: { id: user.id },
+            data: updates,
+          }) as any
+        }
+      }
+    } catch (e) {
+      // Non-critical
+    }
+  }
+
+  if (!user) {
+    redirect('/')
+  }
+
   return {
     user: {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      walletAddress: user.walletAddress,
-      evmWalletAddress: user.evmWalletAddress,
+      id: user!.id,
+      name: user!.name,
+      email: user!.email,
+      role: user!.role,
+      walletAddress: user!.walletAddress,
+      evmWalletAddress: user!.evmWalletAddress,
     },
   }
 }

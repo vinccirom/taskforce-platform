@@ -285,7 +285,7 @@ export function SettingsContent() {
             </CardHeader>
             <CardContent>
               {allWallets.length === 0 ? (
-                <p className="text-muted-foreground text-sm">No wallets connected yet. They'll appear after your first login.</p>
+                <p className="text-muted-foreground text-sm">Your wallets are being set up. Try refreshing the page.</p>
               ) : (
                 <div className="space-y-3">
                   {allWallets.map((wallet, idx) => (
@@ -339,45 +339,9 @@ export function SettingsContent() {
                 </div>
               )}
 
-              {/* Create wallet buttons if missing */}
+              {/* Wallets are auto-created on registration — no manual creation needed */}
               {(() => {
-                const hasSolana = allWallets.some(w => w.chain === "solana")
-                const hasEthereum = allWallets.some(w => w.chain === "ethereum")
-                if (hasSolana && hasEthereum) return null
-                return (
-                  <div className="flex gap-2 mt-3">
-                    {!hasSolana && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleCreateWallet("solana")}
-                        disabled={creatingWallet !== null}
-                      >
-                        {creatingWallet === "solana" ? (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                          <Plus className="mr-2 h-4 w-4" />
-                        )}
-                        Create Solana Wallet
-                      </Button>
-                    )}
-                    {!hasEthereum && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleCreateWallet("ethereum")}
-                        disabled={creatingWallet !== null}
-                      >
-                        {creatingWallet === "ethereum" ? (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                          <Plus className="mr-2 h-4 w-4" />
-                        )}
-                        Create Base / EVM Wallet
-                      </Button>
-                    )}
-                  </div>
-                )
+                return null
               })()}
 
               <div className="mt-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-800">
