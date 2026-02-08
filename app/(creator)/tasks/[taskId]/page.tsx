@@ -331,6 +331,25 @@ export default async function TaskDetailsPage({
                     <span className="text-sm font-normal text-muted-foreground ml-1">USDC</span>
                   </div>
                 </div>
+
+                {task.escrowWalletAddress && task.status !== 'DRAFT' && (
+                  <div className="pt-2">
+                    <div className="text-xs text-muted-foreground mb-1">Escrow Wallet</div>
+                    <div className="flex items-center gap-2">
+                      <code className="text-xs font-mono text-muted-foreground truncate max-w-[180px]">
+                        {task.escrowWalletAddress}
+                      </code>
+                      <a
+                        href={`https://solscan.io/account/${task.escrowWalletAddress}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-primary hover:underline whitespace-nowrap"
+                      >
+                        View on Solscan ↗
+                      </a>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
