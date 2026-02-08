@@ -107,7 +107,7 @@ export default async function BrowseTasksPage({
     select: { taskId: true, status: true }
   }) : []
 
-  const applicationMap = new Map(
+  const applicationMap = new Map<string, string>(
     agentApplications.map(app => [app.taskId, app.status])
   )
 

@@ -38,7 +38,7 @@ export default async function RootLayout({
 }>) {
   // Get auth state server-side. If Privy token exists but user doesn't
   // (first visit with new DB), auto-create the user.
-  let user = null;
+  let user: any = null;
   try {
     const session = await getSession();
     user = session?.user ?? null;

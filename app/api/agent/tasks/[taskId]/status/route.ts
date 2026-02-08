@@ -73,7 +73,7 @@ export async function GET(
     })
 
     // Find the submission (if any) via the application
-    let submission = null
+    let submission: any = null
     if (application) {
       submission = await prisma.submission.findUnique({
         where: { applicationId: application.id },

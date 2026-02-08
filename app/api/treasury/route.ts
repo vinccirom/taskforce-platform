@@ -63,8 +63,8 @@ export async function GET(request: NextRequest) {
     let allocated = 0;
     let paidOut = 0;
 
-    const activeTasks = [];
-    const paymentHistory = [];
+    const activeTasks: any[] = [];
+    const paymentHistory: any[] = [];
 
     for (const task of tasks) {
       const totalBudget = task.totalBudget;
