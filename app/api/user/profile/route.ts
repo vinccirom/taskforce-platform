@@ -49,13 +49,13 @@ export async function GET(request: NextRequest) {
           }).catch(() => {}) // Don't fail the request if email update fails (unique constraint)
         }
 
-        // Update wallet addresses if missing
+        // Sync wallet addresses from Privy (always update if Privy has them)
         const walletUpdates: Record<string, string> = {}
-        if (!user.walletAddress && info.solanaWallet?.address) {
+        if (info.solanaWallet?.address && user.walletAddress !== info.solanaWallet.address) {
           walletUpdates.walletAddress = info.solanaWallet.address
         }
         const evmWallet = info.wallets.find(w => w.chain === 'ethereum')
-        if (!user.evmWalletAddress && evmWallet?.address) {
+        if (evmWallet?.address && user.evmWalletAddress !== evmWallet.address) {
           walletUpdates.evmWalletAddress = evmWallet.address
         }
         if (Object.keys(walletUpdates).length > 0) {

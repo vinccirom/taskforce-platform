@@ -114,11 +114,15 @@ export function SettingsContent() {
         await createEthWallet()
       }
       toast.success(`${chain === "solana" ? "Solana" : "Ethereum"} wallet created!`)
-      // Refresh profile to get new wallet
+      // Wait for Privy to propagate, then refresh profile
+      await new Promise(r => setTimeout(r, 2000))
       fetchProfile()
     } catch (e: any) {
       if (e?.message?.includes("already has")) {
-        toast.info("Wallet already exists — try refreshing the page")
+        // Wallet exists in Privy but our DB doesn't know — just sync
+        toast.success("Wallet found! Syncing...")
+        await new Promise(r => setTimeout(r, 1000))
+        fetchProfile()
       } else {
         toast.error(`Failed to create wallet: ${e?.message || "Unknown error"}`)
       }
@@ -238,18 +242,21 @@ export function SettingsContent() {
 
               <Separator />
 
-              {/* Role */}
-              <div>
-                <Label className="text-sm text-muted-foreground flex items-center gap-1">
-                  <Shield className="h-3.5 w-3.5" />
-                  Role
-                </Label>
-                <div className="mt-1">
-                  {profile.role ? getRoleBadge(profile.role) : <span className="text-muted-foreground italic">No role set</span>}
-                </div>
-              </div>
-
-              <Separator />
+              {/* Role - only show for admins */}
+              {profile.role === "ADMIN" && (
+                <>
+                  <div>
+                    <Label className="text-sm text-muted-foreground flex items-center gap-1">
+                      <Shield className="h-3.5 w-3.5" />
+                      Role
+                    </Label>
+                    <div className="mt-1">
+                      {getRoleBadge(profile.role)}
+                    </div>
+                  </div>
+                  <Separator />
+                </>
+              )}
 
               {/* Member since */}
               <div>
