@@ -1,4 +1,4 @@
-import bcrypt from "bcryptjs"
+import { createHash } from "crypto"
 import { customAlphabet } from "nanoid"
 
 // Generate API keys with prefix apv_ (Agent Product Validation)
@@ -8,12 +8,14 @@ export function generateApiKey(): string {
   return `apv_${nanoid()}`
 }
 
+// Deterministic SHA-256 hash — same key always produces same hash (required for DB lookups)
 export async function hashApiKey(key: string): Promise<string> {
-  return bcrypt.hash(key, 10)
+  return createHash("sha256").update(key).digest("hex")
 }
 
 export async function verifyApiKey(key: string, hash: string): Promise<boolean> {
-  return bcrypt.compare(key, hash)
+  const keyHash = createHash("sha256").update(key).digest("hex")
+  return keyHash === hash
 }
 
 export function getKeyPreview(key: string): string {
