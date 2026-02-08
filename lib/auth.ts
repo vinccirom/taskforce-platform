@@ -2,10 +2,16 @@ import { PrivyClient, User as PrivyUser } from "@privy-io/server-auth"
 import { UserRole } from "@prisma/client"
 import { cookies } from "next/headers"
 
-const privyClient = new PrivyClient(
-  process.env.NEXT_PUBLIC_PRIVY_APP_ID!,
-  process.env.PRIVY_APP_SECRET!
-)
+let _privyClient: PrivyClient | undefined
+function getPrivyClient(): PrivyClient {
+  if (!_privyClient) {
+    _privyClient = new PrivyClient(
+      process.env.NEXT_PUBLIC_PRIVY_APP_ID!,
+      process.env.PRIVY_APP_SECRET!
+    )
+  }
+  return _privyClient
+}
 
 export async function getAuthUser() {
   try {
@@ -15,7 +21,7 @@ export async function getAuthUser() {
     if (!token) return null
 
     // Privy SDK caches the verification key after first call
-    const verifiedClaims = await privyClient.verifyAuthToken(token)
+    const verifiedClaims = await getPrivyClient().verifyAuthToken(token)
     return verifiedClaims
   } catch (error) {
     console.error("Auth verification failed:", error)
@@ -33,11 +39,11 @@ export async function getPrivyUser(privyDid: string): Promise<PrivyUser | null> 
     const idToken = cookieStore.get("privy-id-token")?.value
 
     if (idToken) {
-      return await privyClient.getUser({ idToken })
+      return await getPrivyClient().getUser({ idToken })
     }
 
     // Fallback to DID lookup (rate-limited, but works)
-    return await privyClient.getUser(privyDid)
+    return await getPrivyClient().getUser(privyDid)
   } catch (error) {
     console.error("Failed to get Privy user:", error)
     return null
