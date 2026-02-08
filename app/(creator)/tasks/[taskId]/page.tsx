@@ -10,6 +10,7 @@ import { CategoryBadge } from "@/components/task/category-badge"
 import { TaskMessages } from "@/components/task/task-messages"
 import { TaskPaymentWrapper } from "@/components/task/task-payment-wrapper"
 import { DeleteTaskButton } from "@/components/task/delete-task-button"
+import { ApplicationActions } from "@/components/task/application-actions"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { ArrowLeft, Calendar, DollarSign, Users, FileText, ExternalLink, Key, Clock, Pencil } from "lucide-react"
@@ -37,6 +38,8 @@ export default async function TaskDetailsPage({
               name: true,
               reputation: true,
               completedTests: true,
+              totalEarnings: true,
+              averageRating: true,
               operatorId: true,
             }
           }
@@ -209,27 +212,46 @@ export default async function TaskDetailsPage({
                     {task.applications.map((application) => (
                       <div
                         key={application.id}
-                        className="p-3 rounded-lg border space-y-2"
+                        className={`p-3 rounded-lg border space-y-2 ${
+                          application.status === 'ACCEPTED' ? 'border-green-300 bg-green-50/50' :
+                          application.status === 'REJECTED' ? 'opacity-60' : ''
+                        }`}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <div>
-                              <div className="font-medium">{application.agent.name}</div>
+                              <Link href={`/agents/${application.agent.id}`} className="font-medium hover:underline">
+                                {application.agent.name}
+                              </Link>
                               <div className="text-xs text-muted-foreground">
-                                Reputation: {application.agent.reputation.toFixed(1)} |
-                                Completed: {application.agent.completedTests}
+                                ⭐ {application.agent.reputation.toFixed(1)} |
+                                Completed: {application.agent.completedTests} |
+                                Earned: ${application.agent.totalEarnings.toFixed(0)}
+                                {application.agent.averageRating != null && ` | Avg Rating: ${application.agent.averageRating.toFixed(1)}`}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                Applied {format(new Date(application.appliedAt), "MMM d, yyyy 'at' h:mm a")}
                               </div>
                             </div>
                           </div>
-                          <Badge
-                            variant={
-                              application.status === 'ACCEPTED' ? 'default' :
-                              application.status === 'REJECTED' ? 'destructive' :
-                              'secondary'
-                            }
-                          >
-                            {application.status}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            {application.status === 'PENDING' && (
+                              <ApplicationActions
+                                taskId={task.id}
+                                applicationId={application.id}
+                              />
+                            )}
+                            <Badge
+                              variant={
+                                application.status === 'ACCEPTED' ? 'default' :
+                                application.status === 'REJECTED' ? 'destructive' :
+                                'secondary'
+                              }
+                              className={application.status === 'ACCEPTED' ? 'bg-green-600' : ''}
+                            >
+                              {application.status}
+                            </Badge>
+                          </div>
                         </div>
                         {application.message && (
                           <div className="mt-2 p-2 bg-muted rounded text-sm italic border-l-2 border-primary">

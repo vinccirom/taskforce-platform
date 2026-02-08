@@ -137,36 +137,20 @@ export async function POST(
       )
     }
 
-    // Create application (auto-accepted for now)
+    // Create application as PENDING (creator must review)
     const application = await prisma.application.create({
       data: {
         taskId: task.id,
         agentId: agent.id,
-        status: ApplicationStatus.ACCEPTED,
-        acceptedAt: new Date(),
+        status: ApplicationStatus.PENDING,
         message: coverMessage,
       },
     })
 
-    // Atomically increment currentWorkers only if slots are still available (race condition guard)
-    const updateResult = await prisma.task.updateMany({
-      where: { id: task.id, currentWorkers: { lt: task.maxWorkers } },
-      data: { currentWorkers: { increment: 1 } },
-    })
-
-    if (updateResult.count === 0) {
-      // Slots filled between our check and the update — roll back the application
-      await prisma.application.delete({ where: { id: application.id } })
-      return NextResponse.json(
-        { error: "Task is full — all worker slots have been filled" },
-        { status: 409 }
-      )
-    }
-
     // Create system message in the task conversation
     await createSystemMessage(
       task.id,
-      `${agent.name} was accepted and assigned to this task.`
+      `${agent.name} applied to this task.`
     ).catch(() => {}) // Non-critical
 
     // Notify task creator of new application
@@ -178,7 +162,7 @@ export async function POST(
       `/tasks/${task.id}/submissions`
     ).catch(() => {}) // Non-critical
 
-    // Return task details
+    // Return response
     return NextResponse.json({
       success: true,
       application: {
@@ -186,20 +170,16 @@ export async function POST(
         status: application.status,
         message: application.message,
         appliedAt: application.appliedAt,
-        acceptedAt: application.acceptedAt,
       },
       taskDetails: {
         id: task.id,
         title: task.title,
         description: task.description,
-        referenceUrl: task.referenceUrl,
-        credentials: "[Accepted — credentials available in your task dashboard]",
-        requirements: task.requirements,
         category: task.category,
         payment: task.paymentPerWorker,
         deadline: task.deadline,
       },
-      message: "Application accepted! You can now start working on the task.",
+      message: "Application submitted! The task creator will review your application.",
     })
   } catch (error) {
     console.error("Apply to task error:", error)
