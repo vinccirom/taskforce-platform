@@ -157,7 +157,7 @@ export async function POST(
     } else {
       // No milestones — check if all submissions are approved
       const pendingSubmissions = await prisma.submission.count({
-        where: { taskId: submission.taskId, status: { in: ['SUBMITTED', 'IN_REVIEW'] } },
+        where: { taskId: submission.taskId, status: SubmissionStatus.SUBMITTED },
       });
       shouldComplete = pendingSubmissions === 0;
     }
