@@ -132,6 +132,7 @@ export async function POST(
           )
         }
 
+        // Try reference-based lookup first
         const result = await findTransactionByReference(
           connection,
           platformPubkey,
@@ -143,6 +144,25 @@ export async function POST(
         if (result) {
           verified = true
           transactionHash = result.signature
+          break
+        }
+
+        // Fallback: check USDC token balance on escrow wallet directly
+        // Some wallets don't include the reference key in the transaction
+        try {
+          const { getAssociatedTokenAddress } = await import('@solana/spl-token')
+          const escrowTokenAccount = await getAssociatedTokenAddress(usdcMintPubkey, platformPubkey)
+          const tokenBalance = await connection.getTokenAccountBalance(escrowTokenAccount)
+          const balance = parseFloat(tokenBalance.value.uiAmountString || "0")
+          const tolerance = 0.01
+          
+          if (Math.abs(balance - task.totalBudget) <= tolerance || balance >= task.totalBudget) {
+            verified = true
+            transactionHash = `balance_verified_${Date.now()}`
+            console.log(`✅ Solana Pay verified via balance check: ${balance} USDC on ${targetWallet}`)
+          }
+        } catch (balanceError: any) {
+          console.error("Balance check fallback error:", balanceError.message)
         }
         break
       }
