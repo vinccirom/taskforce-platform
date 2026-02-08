@@ -24,12 +24,10 @@ import {
 } from '@solana/spl-token';
 
 // Solana RPC endpoint
-const SOLANA_RPC_URL = 'https://api.devnet.solana.com'; // Devnet
-// For mainnet: https://api.mainnet-beta.solana.com
+const SOLANA_RPC_URL = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
 
-// Solana Devnet USDC token mint address
-// For mainnet, use: EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v
-const USDC_MINT_ADDRESS = 'Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr'; // Devnet
+// USDC token mint address
+const USDC_MINT_ADDRESS = process.env.USDC_MINT || 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 
 export interface TransferResult {
   success: boolean;
@@ -145,7 +143,7 @@ export async function transferUsdcToAgent(
       sourceWalletId,
       {
         transaction: serializedTransaction.toString('base64'),
-        caip2: 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1', // Solana Devnet
+        caip2: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp', // Solana Mainnet
         authorization_context: {
           authorization_private_keys: [PLATFORM_AUTH_PRIVATE_KEY || ''],
         },
