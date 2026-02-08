@@ -2,9 +2,10 @@
  * Payment utilities for USDC transfers
  * Handles transfers from platform wallet to agent wallets via Privy
  * 
- * TODO: Gas/fee sponsorship — Currently escrow wallets need SOL for transaction fees.
- * For 0% platform fee model, we should sponsor these fees from a platform SOL wallet.
- * When we introduce platform fees later, deduct from the transfer amount instead.
+ * NOTE: Gas fees are currently sponsored by Privy (enabled in Privy dashboard).
+ * This means the platform absorbs Solana transaction fees at 0% cost to users.
+ * TODO: When platform fees are introduced, deduct fees from transfer amounts
+ * and switch from Privy sponsorship to self-sponsored gas from platform revenue.
  */
 
 import {
