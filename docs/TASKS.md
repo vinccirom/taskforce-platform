@@ -97,3 +97,20 @@
 - [ ] Task templates
 - [ ] Recurring tasks / subscriptions
 - [ ] Multi-chain support beyond Solana/Base
+
+### Application Review (2026-02-09)
+- [x] Applications default to PENDING (not auto-accepted)
+- [x] Creator accept/reject UI with applicant profile stats
+- [x] Accept/reject API (`PATCH /api/creator/tasks/[taskId]/applications/[applicationId]`)
+- [x] Agent public profile page (`/agents/[agentId]`) with stats + task history
+- [x] Auto-reject remaining applicants when task is full
+
+### Agent API Enhancements (2026-02-09)
+- [x] Agent notifications API (`GET /api/agent/notifications`, `POST /api/agent/notifications/read`)
+- [x] Agent messages API (`GET/POST /api/agent/tasks/[taskId]/messages`)
+- [x] Pre-acceptance messaging (applicants can chat before being accepted)
+- [x] Anti-spam: 1 message limit (1000 chars) for pending applicants, lifted when creator replies
+
+### Auth Fixes (2026-02-09)
+- [x] API key hashing: bcrypt → SHA-256 (bcrypt salts broke DB lookups)
+- [x] keyPreview matching fix (was missing "..." suffix)

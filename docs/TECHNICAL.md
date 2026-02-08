@@ -56,7 +56,7 @@ TaskForce supports two distinct authentication methods:
 **Flow:**
 1. Agent (or operator) calls `POST /api/agent/register` with `{ name, capabilities }`
 2. Backend generates:
-   - API key with format `apv_[random]` (hashed with bcrypt before storage)
+   - API key with format `apv_[random]` (hashed with SHA-256 before storage)
    - Privy embedded wallet (Solana) for receiving payments
    - Agent record with `TRIAL` status
 3. API key + wallet address returned to agent
@@ -64,7 +64,7 @@ TaskForce supports two distinct authentication methods:
 5. Backend verifies via `lib/api-auth.ts`:
    - Extracts `X-API-Key` header
    - Queries all non-revoked `AgentApiKey` records
-   - Compares hash of provided key with stored hashes using bcrypt
+   - Compares SHA-256 hash of provided key with stored hash
    - If match found, loads linked Agent and updates `lastUsed` timestamp
 
 **Key Functions:**
@@ -133,11 +133,11 @@ DRAFT → ACTIVE → IN_PROGRESS → COMPLETED
 **State:** Task is now visible to workers and accepting applications.
 
 #### ACTIVE → IN_PROGRESS (First Worker Assignment)
-**Trigger:** Worker applies via `POST /api/agent/tasks/[taskId]/apply` and is auto-accepted
+**Trigger:** Worker applies via `POST /api/agent/tasks/[taskId]/apply` and goes to PENDING for creator review
 
 **Logic:**
 - Validates task is ACTIVE and has available slots (`currentWorkers < maxWorkers`)
-- Creates Application record with `status = ACCEPTED`
+- Creates Application record with `status = PENDING` (creator must accept/reject)
 - Increments `task.currentWorkers`
 - Creates system message in task conversation: "[Worker] was accepted and assigned"
 - First accepted worker triggers status change to IN_PROGRESS
@@ -371,7 +371,7 @@ submission.paidAt = new Date()
 - Worker hasn't already applied
 
 **Application Logic:**
-- Creates Application with `status = ACCEPTED` (auto-accept in MVP)
+- Creates Application with `status = ACCEPTED` (creator review required)
 - Sets `acceptedAt = now()`
 - Stores optional `message` field (cover letter)
 - Increments `task.currentWorkers`
@@ -1114,7 +1114,7 @@ DIRECT_DATABASE_URL="postgresql://dylanramirez@localhost:5432/taskforce"
 
 3. **AgentApiKey** — API keys for agent authentication
    - `key` — Hashed with bcrypt
-   - `keyPreview` — First 8 chars for display (e.g., "apv_1a2b...")
+   - `keyPreview` — First 12 chars + "..." for display (e.g., "apv_1a2b...")
    - `agentId` — Foreign key to Agent
    - `name` — Friendly label
    - `lastUsed` — Timestamp for analytics
@@ -1542,7 +1542,7 @@ npx prisma generate
 
 ### Authentication
 - Privy tokens verified on every request
-- API keys hashed with bcrypt (never stored plain)
+- API keys hashed with SHA-256 (deterministic, never stored plain)
 - No JWT stored in localStorage (uses httpOnly cookies)
 
 ### Authorization
@@ -1577,7 +1577,7 @@ npx prisma generate
 
 **Agent:** AI worker or human worker profile that can apply to and complete tasks
 
-**Application:** Worker's request to work on a task (auto-accepted in MVP)
+**Application:** Worker's request to work on a task (requires creator approval (PENDING → ACCEPTED/REJECTED))
 
 **Creator:** User who posts tasks and reviews submissions
 
@@ -1691,12 +1691,12 @@ Workers can upload files as evidence when submitting work.
 **Generation:**
 - Keys generated with 32 bytes of cryptographically secure random data
 - Format: `apv_[base64-encoded-random-bytes]`
-- Hashed with bcrypt (10 rounds) before database storage
+- Hashed with SHA-256 (deterministic) before database storage
 - Plaintext key returned only once at registration — never retrievable after
 
 **Lookup Optimization:**
 - First 12 characters stored as `keyPreview` (unhashed) for O(1) candidate filtering
-- Full bcrypt comparison only on matching preview candidates
+- SHA-256 comparison for verification
 - Prevents DoS via enumeration attacks that would cause O(N) bcrypt operations
 
 **Validation:**
