@@ -473,12 +473,14 @@ export default async function TaskDetailsPage({
                       </Link>
                     </Button>
                   )}
-                  <Button variant="outline" asChild>
-                    <Link href={`/tasks/${task.id}/edit`}>
-                      <Pencil className="mr-2 h-4 w-4" />
-                      Edit Task
-                    </Link>
-                  </Button>
+                  {task.status !== 'COMPLETED' && (
+                    <Button variant="outline" asChild>
+                      <Link href={`/tasks/${task.id}/edit`}>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Edit Task
+                      </Link>
+                    </Button>
+                  )}
                   <DeleteTaskButton
                     taskId={task.id}
                     taskStatus={task.status}

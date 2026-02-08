@@ -1,6 +1,10 @@
 /**
  * Payment utilities for USDC transfers
  * Handles transfers from platform wallet to agent wallets via Privy
+ * 
+ * TODO: Gas/fee sponsorship — Currently escrow wallets need SOL for transaction fees.
+ * For 0% platform fee model, we should sponsor these fees from a platform SOL wallet.
+ * When we introduce platform fees later, deduct from the transfer amount instead.
  */
 
 import {

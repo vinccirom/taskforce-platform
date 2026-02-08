@@ -144,32 +144,41 @@ export async function POST(
       }
     }
 
-    // Check if all milestones are completed — if so, mark task as COMPLETED
+    // Check if task should auto-complete
     const allMilestones = await prisma.milestone.findMany({
       where: { taskId: submission.taskId },
     });
 
-    if (allMilestones.length > 0) {
-      const allCompleted = allMilestones.every(m => m.status === MilestoneStatus.COMPLETED);
-      if (allCompleted) {
-        await prisma.task.update({
-          where: { id: submission.taskId },
-          data: {
-            status: TaskStatus.COMPLETED,
-            completedAt: new Date(),
-          },
-        });
-        console.log(`🎉 Task ${submission.taskId} auto-completed — all milestones done`);
+    // Auto-complete if: (a) all milestones done, OR (b) no milestones and all submissions approved
+    let shouldComplete = false;
 
-        // Notify creator of task completion
-        createNotification(
-          submission.task.creatorId,
-          "TASK_COMPLETED",
-          "Task completed!",
-          `All milestones for "${submission.task.title}" are done`,
-          `/tasks/${submission.taskId}`
-        ).catch(() => {})
-      }
+    if (allMilestones.length > 0) {
+      shouldComplete = allMilestones.every(m => m.status === MilestoneStatus.COMPLETED);
+    } else {
+      // No milestones — check if all submissions are approved
+      const pendingSubmissions = await prisma.submission.count({
+        where: { taskId: submission.taskId, status: { in: ['SUBMITTED', 'IN_REVIEW'] } },
+      });
+      shouldComplete = pendingSubmissions === 0;
+    }
+
+    if (shouldComplete) {
+      await prisma.task.update({
+        where: { id: submission.taskId },
+        data: {
+          status: TaskStatus.COMPLETED,
+          completedAt: new Date(),
+        },
+      });
+      console.log(`🎉 Task ${submission.taskId} auto-completed`);
+
+      createNotification(
+        submission.task.creatorId,
+        "TASK_COMPLETED",
+        "Task completed!",
+        `All work for "${submission.task.title}" has been approved`,
+        `/tasks/${submission.taskId}`
+      ).catch(() => {})
     }
 
     return NextResponse.json({
