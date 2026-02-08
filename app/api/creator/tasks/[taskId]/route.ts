@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getAuthUser } from "@/lib/auth"
 import { TaskStatus } from "@prisma/client"
+import { refundEscrowToCreator } from "@/lib/payment"
 
 /**
  * DELETE /api/creator/tasks/[taskId]
@@ -112,15 +113,28 @@ export async function DELETE(
         data: { status: TaskStatus.CANCELLED },
       })
 
-      // TODO: In production, initiate escrow refund to creator here
+      // Refund escrow to creator (minus 5% cancellation fee)
+      let refundResult: any = null
+      if (task.escrowWalletId && task.escrowWalletAddress && user.walletAddress) {
+        refundResult = await refundEscrowToCreator(
+          user.walletAddress,
+          task.escrowWalletId,
+          task.escrowWalletAddress,
+          task.totalBudget,
+        )
+
+        if (!refundResult.success) {
+          console.error(`⚠️ Task ${taskId} cancelled but refund failed: ${refundResult.error}`)
+        }
+      }
 
       return NextResponse.json({
         success: true,
         action: "cancelled",
-        message: "Task cancelled. Escrow funds will be refunded.",
-        note: task.escrowWalletAddress
-          ? `Escrow at ${task.escrowWalletAddress} will be refunded.`
-          : undefined,
+        message: refundResult?.success
+          ? `Task cancelled. ${(task.totalBudget * 0.95).toFixed(2)} USDC refunded (5% cancellation fee applied).`
+          : "Task cancelled. Refund will be processed manually.",
+        transactionHash: refundResult?.transactionHash,
       })
     }
 

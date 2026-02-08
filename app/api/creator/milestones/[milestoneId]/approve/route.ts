@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { MilestoneStatus, TaskStatus, UserRole } from '@prisma/client';
+import { transferUsdcToAgent } from '@/lib/payment';
 
 export async function POST(
   request: NextRequest,
@@ -47,7 +48,13 @@ export async function POST(
                 status: 'ACCEPTED',
               },
               include: {
-                agent: true,
+                agent: {
+                  select: {
+                    id: true,
+                    name: true,
+                    walletAddress: true,
+                  },
+                },
               },
             },
           },
@@ -106,13 +113,31 @@ export async function POST(
       console.log(`🎉 Task ${milestone.taskId} auto-completed — all milestones done`);
     }
 
-    // TODO: Trigger payout process here (admin approval)
-    // For now, milestones with COMPLETED status will appear in admin payout queue
+    // Pay the accepted worker for this milestone
+    let payoutResult: any = null
+    const acceptedApp = milestone.task.applications[0] // First accepted worker
+    if (acceptedApp?.agent?.walletAddress && milestone.amount) {
+      payoutResult = await transferUsdcToAgent(
+        acceptedApp.agent.walletAddress,
+        milestone.amount,
+        milestone.task.escrowWalletId ?? undefined,
+        milestone.task.escrowWalletAddress ?? undefined,
+      )
+
+      if (payoutResult.success) {
+        console.log(`💰 Milestone ${milestoneId} payout: ${milestone.amount} USDC to ${acceptedApp.agent.name}`)
+      } else {
+        console.error(`⚠️ Milestone ${milestoneId} payout failed: ${payoutResult.error}`)
+      }
+    }
 
     return NextResponse.json({
       success: true,
       milestone: updatedMilestone,
-      message: 'Milestone approved! Payment will be released after admin approval.',
+      message: payoutResult?.success
+        ? `Milestone approved! ${milestone.amount} USDC released to worker.`
+        : 'Milestone approved! Payment will be processed.',
+      transactionHash: payoutResult?.transactionHash,
     });
 
   } catch (error: any) {

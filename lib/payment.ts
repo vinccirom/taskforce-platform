@@ -166,6 +166,132 @@ export async function transferUsdcToAgent(
   }
 }
 
+// Platform revenue wallet for fees
+const PLATFORM_REVENUE_SOLANA = process.env.PLATFORM_REVENUE_SOLANA || '';
+
+// Cancellation fee percentage
+const CANCELLATION_FEE_PERCENT = 5;
+
+/**
+ * Refund USDC from escrow wallet back to creator, minus platform fee
+ *
+ * @param creatorWalletAddress - Solana address of creator's wallet
+ * @param escrowWalletId - Privy wallet ID of the task escrow
+ * @param escrowWalletAddress - Solana address of the escrow wallet
+ * @param totalAmount - Total USDC in escrow
+ * @returns Transaction result
+ */
+export async function refundEscrowToCreator(
+  creatorWalletAddress: string,
+  escrowWalletId: string,
+  escrowWalletAddress: string,
+  totalAmount: number,
+): Promise<TransferResult> {
+  if (!PLATFORM_REVENUE_SOLANA) {
+    return { success: false, error: 'Platform revenue wallet not configured' };
+  }
+
+  // Calculate fee and refund amounts
+  const feeAmount = Math.floor((totalAmount * CANCELLATION_FEE_PERCENT) / 100 * 1_000_000) / 1_000_000;
+  const refundAmount = totalAmount - feeAmount;
+  const feeLamports = Math.floor(feeAmount * 1_000_000);
+  const refundLamports = Math.floor(refundAmount * 1_000_000);
+
+  console.log(`💸 Refund: ${refundAmount} USDC to creator, ${feeAmount} USDC (${CANCELLATION_FEE_PERCENT}%) fee to platform`);
+
+  if (process.env.MOCK_TRANSFERS === 'true' && process.env.NODE_ENV !== 'production') {
+    console.log(`🎭 MOCK: Simulating refund of ${refundAmount} USDC to ${creatorWalletAddress}`);
+    return {
+      success: true,
+      transactionHash: `mock_refund_${Date.now()}`,
+    };
+  }
+
+  try {
+    const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
+    const escrowPubkey = new PublicKey(escrowWalletAddress);
+    const creatorPubkey = new PublicKey(creatorWalletAddress);
+    const revenuePubkey = new PublicKey(PLATFORM_REVENUE_SOLANA);
+    const mintPubkey = new PublicKey(USDC_MINT_ADDRESS);
+
+    // Get token accounts
+    const escrowTokenAccount = await getAssociatedTokenAddress(mintPubkey, escrowPubkey);
+    const creatorTokenAccount = await getAssociatedTokenAddress(mintPubkey, creatorPubkey);
+    const revenueTokenAccount = await getAssociatedTokenAddress(mintPubkey, revenuePubkey);
+
+    const transaction = new Transaction();
+
+    // Create creator's token account if needed
+    const creatorAccountInfo = await connection.getAccountInfo(creatorTokenAccount);
+    if (!creatorAccountInfo) {
+      transaction.add(
+        createAssociatedTokenAccountInstruction(
+          escrowPubkey, creatorTokenAccount, creatorPubkey, mintPubkey
+        )
+      );
+    }
+
+    // Create revenue token account if needed
+    const revenueAccountInfo = await connection.getAccountInfo(revenueTokenAccount);
+    if (!revenueAccountInfo) {
+      transaction.add(
+        createAssociatedTokenAccountInstruction(
+          escrowPubkey, revenueTokenAccount, revenuePubkey, mintPubkey
+        )
+      );
+    }
+
+    // Transfer refund to creator
+    transaction.add(
+      createTransferInstruction(
+        escrowTokenAccount, creatorTokenAccount, escrowPubkey, refundLamports
+      )
+    );
+
+    // Transfer fee to platform revenue
+    if (feeLamports > 0) {
+      transaction.add(
+        createTransferInstruction(
+          escrowTokenAccount, revenueTokenAccount, escrowPubkey, feeLamports
+        )
+      );
+    }
+
+    const { blockhash } = await connection.getLatestBlockhash();
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = escrowPubkey;
+
+    const serializedTransaction = transaction.serialize({
+      requireAllSignatures: false,
+      verifySignatures: false,
+    });
+
+    const result = await privyServer.wallets().solana().signAndSendTransaction(
+      escrowWalletId,
+      {
+        transaction: serializedTransaction.toString('base64'),
+        caip2: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
+        authorization_context: {
+          authorization_private_keys: [PLATFORM_AUTH_PRIVATE_KEY || ''],
+        },
+      }
+    );
+
+    console.log(`✅ Refund successful: ${refundAmount} USDC to creator, ${feeAmount} USDC fee. TX: ${result.transaction_id}`);
+
+    return {
+      success: true,
+      transactionHash: result.transaction_id,
+    };
+  } catch (error: any) {
+    console.error('❌ Refund failed:', error.message);
+    return {
+      success: false,
+      error: error.message || 'Refund failed',
+    };
+  }
+}
+
 /**
  * Get platform wallet balance
  */
