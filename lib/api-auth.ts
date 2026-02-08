@@ -26,8 +26,8 @@ export async function authenticateAgent(
     }
   }
 
-  // Use key preview (first 12 chars) to narrow candidates before bcrypt
-  const keyPreview = apiKey.substring(0, 12)
+  // Use key preview (first 12 chars + "...") to narrow candidates
+  const keyPreview = apiKey.substring(0, 12) + "..."
   const candidates = await prisma.agentApiKey.findMany({
     where: {
       keyPreview: keyPreview,
