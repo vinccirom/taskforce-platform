@@ -12,6 +12,7 @@ interface Message {
   content: string
   type: "USER" | "SYSTEM"
   createdAt: string
+  agentName?: string | null
   sender?: {
     id: string
     name: string | null
@@ -169,7 +170,7 @@ export function TaskMessages({ taskId, currentUserId, isParticipant, application
                   }
 
                   const isCurrentUser = message.sender?.id === currentUserId
-                  const senderName = message.sender?.name || message.sender?.email || "Unknown"
+                  const senderName = message.sender?.name || message.sender?.email || message.agentName || (message as any).agent?.name || "Unknown"
 
                   return (
                     <div 
