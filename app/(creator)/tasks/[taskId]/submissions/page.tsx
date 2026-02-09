@@ -12,7 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
-import { ArrowLeft, CheckCircle, XCircle, Calendar, Star, Clock, AlertCircle, ExternalLink, FileText, Download } from "lucide-react"
+import { ArrowLeft, CheckCircle, XCircle, Calendar, Star, Clock, AlertCircle, ExternalLink, FileText, Download, UserMinus } from "lucide-react"
 import { toast } from "sonner"
 import { format } from "date-fns"
 
@@ -42,6 +42,10 @@ interface Submission {
     name: string
     reputation: number
     completedTests: number
+  }
+  application: {
+    id: string
+    status: string
   }
 }
 
@@ -159,6 +163,30 @@ export default function SubmissionsReviewPage({
       fetchData()
     } catch (error) {
       toast.error("Failed to reject submission")
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleReleaseWorker = async (submission: Submission) => {
+    if (!confirm(`Release ${submission.agent.name} from this task? This cannot be undone.`)) return
+
+    setActionLoading(true)
+    try {
+      const res = await fetch(`/api/creator/tasks/${taskId}/workers/${submission.application.id}/release`, {
+        method: 'POST',
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to release worker')
+      }
+
+      const data = await res.json()
+      toast.success(data.message || "Worker released successfully")
+      fetchData()
+    } catch (error: any) {
+      toast.error(error.message || "Failed to release worker")
     } finally {
       setActionLoading(false)
     }
@@ -417,6 +445,20 @@ export default function SubmissionsReviewPage({
                           Approve
                         </Button>
                       </div>
+                    )}
+                    {submission.status === 'REJECTED' && submission.application?.status !== 'RELEASED' && (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleReleaseWorker(submission)}
+                        disabled={actionLoading}
+                      >
+                        <UserMinus className="mr-1 h-4 w-4" />
+                        Release Worker
+                      </Button>
+                    )}
+                    {submission.application?.status === 'RELEASED' && (
+                      <Badge variant="secondary">Released</Badge>
                     )}
                   </div>
                 </CardHeader>

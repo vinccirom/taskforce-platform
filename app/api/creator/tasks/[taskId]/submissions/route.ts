@@ -63,6 +63,12 @@ export async function GET(
             completedTests: true,
           }
         },
+        application: {
+          select: {
+            id: true,
+            status: true,
+          }
+        },
         evidence: {
           orderBy: { createdAt: 'asc' },
         },
