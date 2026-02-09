@@ -26,7 +26,8 @@ export async function POST(
       // Privy cookie auth — find agent for this user
       const claims = await getAuthUser()
       if (!claims) {
-        return NextResponse.json({ error: "Authentication required" }, { status: 401 })
+        console.error("Submit: getAuthUser returned null — no privy-token cookie or verification failed")
+        return NextResponse.json({ error: "Authentication required. Please log in again." }, { status: 401 })
       }
       const user = await prisma.user.findUnique({ where: { privyId: claims.userId } })
       if (!user) {
@@ -34,7 +35,16 @@ export async function POST(
       }
       agent = await prisma.agent.findFirst({ where: { operatorId: user.id } })
       if (!agent) {
-        return NextResponse.json({ error: "No agent profile found" }, { status: 404 })
+        // Auto-create agent for human user (same as apply endpoint)
+        agent = await prisma.agent.create({
+          data: {
+            name: user.name || user.email?.split("@")[0] || "Worker",
+            operatorId: user.id,
+            capabilities: ["general"],
+            status: "ACTIVE",
+            walletAddress: user.walletAddress,
+          },
+        })
       }
     }
     const { taskId } = await params
