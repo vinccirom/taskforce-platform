@@ -2,16 +2,14 @@ import { requireAuth } from "@/components/auth/role-guard"
 import { prisma } from "@/lib/prisma"
 import { AppShell } from "@/components/layouts/app-shell"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { ResponsiveTable } from "@/components/ui/responsive-table"
 import { StatCard } from "@/components/ui/stat-card"
 import { PageHeader } from "@/components/ui/page-header"
-import { DollarSign, Clock, CheckCircle, Inbox, ArrowDownLeft, ArrowUpRight } from "lucide-react"
-import { format } from "date-fns"
+import { ArrowDownLeft, ArrowUpRight, TrendingUp, TrendingDown, Minus, CheckCircle, Inbox } from "lucide-react"
 import { WalletDisplay as PayoutWalletSelector } from "@/components/earnings/payout-wallet-selector"
 import { PayoutStatus, MilestoneStatus } from "@prisma/client"
+import { PaymentsTable, type Transaction } from "./payments-table"
 
-export default async function EarningsPage() {
+export default async function PaymentsPage() {
   const session = await requireAuth()
   const userId = session.user.id
 
@@ -30,32 +28,13 @@ export default async function EarningsPage() {
       })
     : []
 
-  const totalEarnings = agents.reduce((sum, a) => sum + a.totalEarnings, 0)
-  const completedTasks = agents.reduce((sum, a) => sum + a.completedTests, 0)
-
-  const pendingEarnings = workerSubmissions
-    .filter(s => s.payoutStatus === 'PENDING')
-    .reduce((sum, s) => sum + (s.payoutAmount || 0), 0)
-  const approvedEarnings = workerSubmissions
-    .filter(s => s.payoutStatus === 'APPROVED')
-    .reduce((sum, s) => sum + (s.payoutAmount || 0), 0)
-  const paidEarnings = workerSubmissions
-    .filter(s => s.payoutStatus === 'PAID')
-    .reduce((sum, s) => sum + (s.payoutAmount || 0), 0)
-
-  const workerTransactions = workerSubmissions.filter(
-    s => s.status === 'APPROVED' || s.payoutStatus === 'APPROVED' || s.payoutStatus === 'PAID'
-  )
-
   // ── Creator Payments ──
   const creatorTasks = await prisma.task.findMany({
     where: { creatorId: userId },
     include: {
       submissions: {
         where: { status: 'APPROVED' },
-        include: {
-          agent: { select: { id: true, name: true } },
-        },
+        include: { agent: { select: { id: true, name: true } } },
       },
       milestones: true,
       applications: {
@@ -65,17 +44,23 @@ export default async function EarningsPage() {
     },
   })
 
-  let creatorPaidOut = 0
-  let creatorPending = 0
-  const creatorPayments: Array<{
-    date: Date
-    taskTitle: string
-    workerName: string
-    amount: number
-    status: string
-    type: string
-  }> = []
+  // ── Build unified transactions ──
+  const transactions: Transaction[] = []
 
+  // Worker submissions → "received"
+  for (const sub of workerSubmissions) {
+    if (sub.status === 'APPROVED' || sub.payoutStatus === 'APPROVED' || sub.payoutStatus === 'PAID') {
+      transactions.push({
+        date: (sub.paidAt || sub.reviewedAt || sub.submittedAt).toISOString(),
+        description: `Received for: ${sub.task.title}`,
+        direction: "received",
+        amount: sub.payoutAmount || 0,
+        status: sub.payoutStatus,
+      })
+    }
+  }
+
+  // Creator payments → "paid"
   for (const task of creatorTasks) {
     if (task.paymentType === 'FIXED') {
       for (const sub of task.submissions) {
@@ -83,25 +68,13 @@ export default async function EarningsPage() {
         const workerName = task.applications.find(a => a.agentId === sub.agentId)?.agent.name
           || sub.agent.name || 'Unknown'
 
-        if (sub.payoutStatus === PayoutStatus.PAID) {
-          creatorPaidOut += amount
-          creatorPayments.push({
-            date: sub.paidAt || sub.submittedAt,
-            taskTitle: task.title,
-            workerName,
+        if (sub.payoutStatus === PayoutStatus.PAID || sub.payoutStatus === PayoutStatus.APPROVED || sub.payoutStatus === PayoutStatus.PROCESSING) {
+          transactions.push({
+            date: (sub.paidAt || sub.reviewedAt || sub.submittedAt).toISOString(),
+            description: `Paid to ${workerName}: ${task.title}`,
+            direction: "paid",
             amount,
-            status: 'PAID',
-            type: 'submission',
-          })
-        } else if (sub.payoutStatus === PayoutStatus.APPROVED || sub.payoutStatus === PayoutStatus.PROCESSING) {
-          creatorPending += amount
-          creatorPayments.push({
-            date: sub.reviewedAt || sub.submittedAt,
-            taskTitle: task.title,
-            workerName,
-            amount,
-            status: sub.payoutStatus,
-            type: 'submission',
+            status: sub.payoutStatus === PayoutStatus.PAID ? 'PAID' : sub.payoutStatus,
           })
         }
       }
@@ -111,160 +84,85 @@ export default async function EarningsPage() {
       const workerName = task.applications[0]?.agent.name || 'Unknown'
       for (const ms of task.milestones) {
         if (ms.status === MilestoneStatus.COMPLETED) {
-          creatorPaidOut += ms.amount
-          creatorPayments.push({
-            date: ms.completedAt || ms.updatedAt,
-            taskTitle: `${task.title} — ${ms.title}`,
-            workerName,
+          transactions.push({
+            date: (ms.completedAt || ms.updatedAt).toISOString(),
+            description: `Paid to ${workerName}: ${task.title} — ${ms.title}`,
+            direction: "paid",
             amount: ms.amount,
             status: 'PAID',
-            type: 'milestone',
           })
         }
       }
     }
   }
 
-  creatorPayments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  // Sort newest first
+  transactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
-  const hasWorkerData = agentIds.length > 0
-  const hasCreatorData = creatorTasks.length > 0
+  // ── Stats ──
+  const totalEarned = transactions
+    .filter(t => t.direction === "received" && t.status === "PAID")
+    .reduce((sum, t) => sum + t.amount, 0)
+
+  const totalSpent = transactions
+    .filter(t => t.direction === "paid" && t.status === "PAID")
+    .reduce((sum, t) => sum + t.amount, 0)
+
+  const net = totalEarned - totalSpent
 
   return (
     <AppShell>
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         <PageHeader
-          title="Earnings"
-          description="Track your payments and transaction history"
+          title="Payments"
+          description="Track all your earnings and payments in one place"
         />
 
-        {/* ── Worker Section ── */}
-        {hasWorkerData && (
-          <>
-            {hasCreatorData && (
-              <h2 className="text-xl font-bold font-grotesk mb-4 flex items-center gap-2">
-                <ArrowDownLeft className="h-5 w-5 text-green-500" />
-                Earnings (as Worker)
-              </h2>
-            )}
+        {/* Stat Cards */}
+        <div className="grid gap-6 md:grid-cols-3 mb-8">
+          <StatCard
+            label="Total Earned"
+            value={`$${totalEarned.toFixed(2)}`}
+            icon={ArrowDownLeft}
+            description="Sum of all paid worker submissions"
+            variant="success"
+          />
+          <StatCard
+            label="Total Spent"
+            value={`$${totalSpent.toFixed(2)}`}
+            icon={ArrowUpRight}
+            description="Sum of all payments to workers"
+            variant="destructive"
+          />
+          <StatCard
+            label="Net"
+            value={`${net >= 0 ? "" : "-"}$${Math.abs(net).toFixed(2)}`}
+            icon={net >= 0 ? TrendingUp : net < 0 ? TrendingDown : Minus}
+            description={net >= 0 ? "You're in the green" : "You've spent more than earned"}
+            variant={net > 0 ? "success" : net < 0 ? "destructive" : "secondary"}
+          />
+        </div>
 
-            <Card variant="gradient" className="mb-8">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <DollarSign className="h-5 w-5" />
-                  Total Earnings
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-5xl font-black font-grotesk mb-2">
-                  ${totalEarnings.toFixed(2)}
-                  <span className="text-xl font-normal ml-2 opacity-90">USDC</span>
-                </div>
-                <p className="text-sm opacity-90">
-                  From {completedTasks} completed task{completedTasks !== 1 ? 's' : ''}
-                </p>
-              </CardContent>
-            </Card>
+        {/* Wallet */}
+        <PayoutWalletSelector
+          solanaAddress={session.user.walletAddress ?? null}
+          evmAddress={session.user.evmWalletAddress ?? null}
+        />
 
-            <PayoutWalletSelector
-              solanaAddress={session.user.walletAddress ?? null}
-              evmAddress={session.user.evmWalletAddress ?? null}
-            />
-
-            <div className="grid gap-6 md:grid-cols-3 mb-8">
-              <StatCard label="Pending" value={`$${pendingEarnings.toFixed(2)}`} icon={Clock} description="Awaiting creator approval" variant="warning" />
-              <StatCard label="Approved" value={`$${approvedEarnings.toFixed(2)}`} icon={CheckCircle} description="Processing payment" variant="primary" />
-              <StatCard label="Paid" value={`$${paidEarnings.toFixed(2)}`} icon={CheckCircle} description="In your wallet" variant="success" />
-            </div>
-
-            <Card className="mb-8">
-              <CardHeader>
-                <CardTitle>Transaction History</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveTable
-                  columns={[
-                    { header: "Date", accessor: "date", cell: (value: string | Date) => format(new Date(value), "MMM d, yyyy") },
-                    { header: "Task", accessor: "title", className: "max-w-[200px] truncate" },
-                    { header: "Amount", accessor: "amount", className: "text-right", cell: (value: number) => <span className="font-semibold">${value.toFixed(2)} USDC</span> },
-                    { header: "Status", accessor: "payoutStatus", cell: (value: string) => <Badge variant={value === 'PAID' ? 'success' : value === 'APPROVED' ? 'warning' : 'secondary'}>{value}</Badge> },
-                  ]}
-                  data={workerTransactions.map(sub => ({
-                    date: sub.reviewedAt || sub.submittedAt,
-                    title: sub.task.title,
-                    amount: sub.payoutAmount || 0,
-                    payoutStatus: sub.payoutStatus,
-                  }))}
-                  emptyState={
-                    <div className="flex flex-col items-center justify-center py-12 text-center">
-                      <div className="mb-4 rounded-full bg-muted/50 p-6"><Inbox className="h-12 w-12 text-muted-foreground" /></div>
-                      <h3 className="text-xl font-semibold font-grotesk mb-2">No Transaction History</h3>
-                      <p className="text-sm text-muted-foreground max-w-md">Approved and paid submissions will appear here</p>
-                    </div>
-                  }
-                />
-              </CardContent>
-            </Card>
-          </>
-        )}
-
-        {/* ── Creator Section ── */}
-        {hasCreatorData && (
-          <>
-            {hasWorkerData && (
-              <h2 className="text-xl font-bold font-grotesk mb-4 flex items-center gap-2">
-                <ArrowUpRight className="h-5 w-5 text-blue-500" />
-                Payments (as Creator)
-              </h2>
-            )}
-
-            {!hasWorkerData && (
-              <h2 className="text-xl font-bold font-grotesk mb-4 flex items-center gap-2">
-                <ArrowUpRight className="h-5 w-5 text-blue-500" />
-                Payments Made
-              </h2>
-            )}
-
-            <div className="grid gap-6 md:grid-cols-2 mb-8">
-              <StatCard label="Total Paid Out" value={`$${creatorPaidOut.toFixed(2)}`} icon={DollarSign} description="Completed payments to workers" variant="primary" />
-              <StatCard label="Pending Payments" value={`$${creatorPending.toFixed(2)}`} icon={Clock} description="Approved, awaiting payout" variant="warning" />
-            </div>
-
-            <Card className="mb-8">
-              <CardHeader>
-                <CardTitle>Payment History</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveTable
-                  columns={[
-                    { header: "Date", accessor: "date", cell: (value: string | Date) => format(new Date(value), "MMM d, yyyy") },
-                    { header: "Task", accessor: "taskTitle", className: "max-w-[200px] truncate" },
-                    { header: "Worker", accessor: "workerName" },
-                    { header: "Amount", accessor: "amount", className: "text-right", cell: (value: number) => <span className="font-semibold">${value.toFixed(2)} USDC</span> },
-                    { header: "Status", accessor: "status", cell: (value: string) => <Badge variant={value === 'PAID' ? 'success' : value === 'APPROVED' ? 'warning' : 'secondary'}>{value}</Badge> },
-                  ]}
-                  data={creatorPayments}
-                  emptyState={
-                    <div className="flex flex-col items-center justify-center py-12 text-center">
-                      <div className="mb-4 rounded-full bg-muted/50 p-6"><Inbox className="h-12 w-12 text-muted-foreground" /></div>
-                      <h3 className="text-xl font-semibold font-grotesk mb-2">No Payments Yet</h3>
-                      <p className="text-sm text-muted-foreground max-w-md">Payments to workers will appear here once submissions are approved</p>
-                    </div>
-                  }
-                />
-              </CardContent>
-            </Card>
-          </>
-        )}
-
-        {/* ── Empty State ── */}
-        {!hasWorkerData && !hasCreatorData && (
+        {/* Unified Transaction Table */}
+        {transactions.length > 0 ? (
+          <PaymentsTable transactions={transactions} />
+        ) : (
           <Card className="mb-8">
             <CardContent className="py-12">
               <div className="flex flex-col items-center justify-center text-center">
-                <div className="mb-4 rounded-full bg-muted/50 p-6"><Inbox className="h-12 w-12 text-muted-foreground" /></div>
-                <h3 className="text-xl font-semibold font-grotesk mb-2">No Earnings Yet</h3>
-                <p className="text-sm text-muted-foreground max-w-md">Apply to tasks to start earning, or create tasks and pay workers</p>
+                <div className="mb-4 rounded-full bg-muted/50 p-6">
+                  <Inbox className="h-12 w-12 text-muted-foreground" />
+                </div>
+                <h3 className="text-xl font-semibold font-grotesk mb-2">No Transactions Yet</h3>
+                <p className="text-sm text-muted-foreground max-w-md">
+                  Apply to tasks to start earning, or create tasks and pay workers. All activity will show up here.
+                </p>
               </div>
             </CardContent>
           </Card>

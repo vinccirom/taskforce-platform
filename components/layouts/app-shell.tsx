@@ -67,7 +67,7 @@ export function AppShell({ children }: AppShellProps) {
         { href: "/tasks", label: "My Tasks", icon: Clipboard },
         { href: "/browse", label: "Browse", icon: Search },
         { href: "/messages", label: "Messages", icon: MessageSquare },
-        { href: "/earnings", label: "Earnings", icon: DollarSign },
+        { href: "/earnings", label: "Payments", icon: DollarSign },
       ]
 
   const NavLinks = () => (
