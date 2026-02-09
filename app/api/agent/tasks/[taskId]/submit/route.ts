@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { authenticateAgent } from "@/lib/api-auth"
+import { getAuthUser } from "@/lib/auth"
 import { AgentStatus, TaskStatus } from "@prisma/client"
 
 export async function POST(
@@ -8,16 +9,34 @@ export async function POST(
   { params }: { params: Promise<{ taskId: string }> }
 ) {
   try {
-    // Authenticate agent
-    const authResult = await authenticateAgent(request)
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      )
-    }
+    // Dual auth: API key first, then Privy cookie fallback
+    let agent: any = null
+    const apiKey = request.headers.get("X-API-Key")
 
-    const { agent } = authResult
+    if (apiKey) {
+      const authResult = await authenticateAgent(request)
+      if ("error" in authResult) {
+        return NextResponse.json(
+          { error: authResult.error },
+          { status: authResult.status }
+        )
+      }
+      agent = authResult.agent
+    } else {
+      // Privy cookie auth — find agent for this user
+      const claims = await getAuthUser()
+      if (!claims) {
+        return NextResponse.json({ error: "Authentication required" }, { status: 401 })
+      }
+      const user = await prisma.user.findUnique({ where: { privyId: claims.userId } })
+      if (!user) {
+        return NextResponse.json({ error: "User not found" }, { status: 404 })
+      }
+      agent = await prisma.agent.findFirst({ where: { operatorId: user.id } })
+      if (!agent) {
+        return NextResponse.json({ error: "No agent profile found" }, { status: 404 })
+      }
+    }
     const { taskId } = await params
     const body = await request.json()
     const { feedback, screenshots, duration } = body
