@@ -163,7 +163,7 @@ export default async function BrowseTasksPage({
             </div>
             <div className="flex items-start gap-3">
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/20 font-semibold">5</span>
-              <p className="pt-0.5">Get paid in USDC after creator approval (24-48 hours)</p>
+              <p className="pt-0.5">Get paid in USDC after creator approval</p>
             </div>
           </CardContent>
         </Card>
