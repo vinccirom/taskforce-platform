@@ -8,10 +8,11 @@ import { Label } from "@/components/ui/label";
 import { Copy, Check, AlertTriangle, Loader2, ArrowUpRight } from "lucide-react";
 
 interface WithdrawFormProps {
-  walletAddress: string;
+  solanaAddress: string | null;
+  evmAddress: string | null;
 }
 
-export function WithdrawForm({ walletAddress }: WithdrawFormProps) {
+export function WithdrawForm({ solanaAddress, evmAddress }: WithdrawFormProps) {
   const [destination, setDestination] = useState("");
   const [amount, setAmount] = useState("");
   const [chain, setChain] = useState<"solana" | "base">("solana");
@@ -40,12 +41,6 @@ export function WithdrawForm({ walletAddress }: WithdrawFormProps) {
     } finally {
       setBalanceLoading(false);
     }
-  }
-
-  async function handleCopy() {
-    await navigator.clipboard.writeText(walletAddress);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -93,17 +88,36 @@ export function WithdrawForm({ walletAddress }: WithdrawFormProps) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Wallet Address */}
-        <div>
-          <Label className="text-sm text-muted-foreground">Your Wallet Address</Label>
-          <div className="flex items-center gap-2 mt-1">
-            <code className="flex-1 bg-muted px-3 py-2 rounded text-sm font-mono truncate">
-              {walletAddress}
-            </code>
-            <Button variant="outline" size="sm" onClick={handleCopy}>
-              {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-            </Button>
-          </div>
+        {/* Wallet Addresses */}
+        <div className="space-y-3">
+          <Label className="text-sm text-muted-foreground">Your Wallets</Label>
+          {solanaAddress && (
+            <div className="flex items-center gap-2">
+              <img src="/solana-logo.svg" alt="Solana" className="h-5 w-5" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+              <span className="text-xs font-medium text-muted-foreground w-14">Solana</span>
+              <code className="flex-1 bg-muted px-3 py-2 rounded text-sm font-mono truncate">
+                {solanaAddress}
+              </code>
+              <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(solanaAddress); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>
+                {copied && chain === "solana" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </div>
+          )}
+          {evmAddress && (
+            <div className="flex items-center gap-2">
+              <img src="/base-logo.svg" alt="Base" className="h-5 w-5" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+              <span className="text-xs font-medium text-muted-foreground w-14">Base</span>
+              <code className="flex-1 bg-muted px-3 py-2 rounded text-sm font-mono truncate">
+                {evmAddress}
+              </code>
+              <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(evmAddress); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>
+                {copied && chain === "base" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </div>
+          )}
+          {!solanaAddress && !evmAddress && (
+            <p className="text-sm text-muted-foreground">No wallets found. Visit Settings to set up your wallet.</p>
+          )}
         </div>
 
         {/* Balance */}

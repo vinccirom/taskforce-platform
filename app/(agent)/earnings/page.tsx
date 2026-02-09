@@ -151,8 +151,8 @@ export default async function PaymentsPage() {
         />
 
         {/* Withdraw */}
-        {session.user.walletAddress && (
-          <WithdrawForm walletAddress={session.user.walletAddress} />
+        {(session.user.walletAddress || session.user.evmWalletAddress) && (
+          <WithdrawForm solanaAddress={session.user.walletAddress ?? null} evmAddress={session.user.evmWalletAddress ?? null} />
         )}
 
         {/* Unified Transaction Table */}
