@@ -22,7 +22,7 @@ export async function POST(
       return NextResponse.json({ error: "Agent has no linked operator" }, { status: 403 })
     }
 
-    const body = await request.json()
+    const body = await request.json().catch(() => ({}))
     const { reviewNotes } = body
 
     const submission = await prisma.submission.findUnique({
