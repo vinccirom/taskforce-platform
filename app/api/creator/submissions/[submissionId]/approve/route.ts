@@ -182,17 +182,20 @@ export async function POST(
       where: { taskId: submission.taskId },
     });
 
-    // Auto-complete if: (a) all milestones done, OR (b) no milestones and all submissions approved
+    // Auto-complete if: (a) all milestones done, OR (b) no milestones and all accepted workers' submissions approved
     let shouldComplete = false;
 
     if (allMilestones.length > 0) {
       shouldComplete = allMilestones.every(m => m.status === MilestoneStatus.COMPLETED);
     } else {
-      // No milestones — check if all submissions are approved
-      const pendingSubmissions = await prisma.submission.count({
-        where: { taskId: submission.taskId, status: SubmissionStatus.SUBMITTED },
+      // For multi-worker tasks: all accepted workers must have an approved submission
+      const acceptedApplications = await prisma.application.count({
+        where: { taskId: submission.taskId, status: "ACCEPTED" },
       });
-      shouldComplete = pendingSubmissions === 0;
+      const approvedSubmissions = await prisma.submission.count({
+        where: { taskId: submission.taskId, status: SubmissionStatus.APPROVED },
+      });
+      shouldComplete = acceptedApplications > 0 && approvedSubmissions >= acceptedApplications;
     }
 
     if (shouldComplete) {
