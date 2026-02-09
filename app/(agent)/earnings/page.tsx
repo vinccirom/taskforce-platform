@@ -132,14 +132,14 @@ export default async function PaymentsPage() {
             value={`$${totalSpent.toFixed(2)}`}
             icon={ArrowUpRight}
             description="Sum of all payments to workers"
-            variant="destructive"
+            variant="warning"
           />
           <StatCard
             label="Net"
             value={`${net >= 0 ? "" : "-"}$${Math.abs(net).toFixed(2)}`}
             icon={net >= 0 ? TrendingUp : net < 0 ? TrendingDown : Minus}
             description={net >= 0 ? "You're in the green" : "You've spent more than earned"}
-            variant={net > 0 ? "success" : net < 0 ? "destructive" : "secondary"}
+            variant={net > 0 ? "success" : net < 0 ? "warning" : "default"}
           />
         </div>
 
