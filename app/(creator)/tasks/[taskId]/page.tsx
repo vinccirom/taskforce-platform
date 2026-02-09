@@ -384,9 +384,18 @@ export default async function TaskDetailsPage({
                   <div className="pt-2">
                     <div className="text-xs text-muted-foreground mb-1">Escrow Wallet</div>
                     <div className="flex items-center gap-2">
-                      <code className="text-xs font-mono text-muted-foreground truncate max-w-[180px]">
-                        {task.escrowWalletAddress}
+                      <code className="text-xs font-mono text-muted-foreground">
+                        {task.escrowWalletAddress.slice(0, 4)}...{task.escrowWalletAddress.slice(-4)}
                       </code>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(task.escrowWalletAddress!)
+                        }}
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        title="Copy address"
+                      >
+                        📋
+                      </button>
                       <a
                         href={`https://solscan.io/account/${task.escrowWalletAddress}`}
                         target="_blank"

@@ -126,7 +126,12 @@ export function TaskMessages({ taskId, currentUserId, isParticipant, application
       if (!lastMessageId) return
       const data = await fetchMessages(lastMessageId)
       if (data.messages && data.messages.length > 0) {
-        setMessages(prev => [...prev, ...data.messages])
+        setMessages(prev => {
+          const existingIds = new Set(prev.map(m => m.id))
+          const newMessages = data.messages.filter((m: Message) => !existingIds.has(m.id))
+          if (newMessages.length === 0) return prev
+          return [...prev, ...newMessages]
+        })
         setTimeout(scrollToBottom, 100)
       }
     }, 5000)

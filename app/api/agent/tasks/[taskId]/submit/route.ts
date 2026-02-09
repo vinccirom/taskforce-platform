@@ -113,7 +113,16 @@ export async function POST(
     if (existingSubmission) {
       if (existingSubmission.status === "REJECTED") {
         // Allow re-submission: update the existing rejected submission
-        const { bugReports, rating, personaUsed } = body
+        const { bugReports, rating, personaUsed, milestoneId: resubMilestoneId } = body
+
+        // Determine payout amount: use milestone amount if provided, else fall back
+        let resubPayoutAmount = application.task.paymentPerWorker ?? application.task.totalBudget
+        if (resubMilestoneId) {
+          const milestone = await prisma.milestone.findUnique({ where: { id: resubMilestoneId } })
+          if (milestone) {
+            resubPayoutAmount = milestone.amount
+          }
+        }
 
         const updatedSubmission = await prisma.submission.update({
           where: { id: existingSubmission.id },
@@ -127,7 +136,7 @@ export async function POST(
             submittedAt: new Date(),
             reviewedAt: null,
             reviewNotes: null,
-            payoutAmount: application.task.paymentPerWorker ?? application.task.totalBudget,
+            payoutAmount: resubPayoutAmount,
             payoutStatus: "PENDING",
           },
         })
@@ -166,7 +175,16 @@ export async function POST(
       )
     }
 
-    const { bugReports, rating, personaUsed } = body
+    const { bugReports, rating, personaUsed, milestoneId } = body
+
+    // Determine payout amount: use milestone amount if provided, else fall back
+    let payoutAmount: number = application.task.paymentPerWorker ?? application.task.totalBudget
+    if (milestoneId) {
+      const milestone = await prisma.milestone.findUnique({ where: { id: milestoneId } })
+      if (milestone) {
+        payoutAmount = milestone.amount
+      }
+    }
 
     // Create submission
     const submission = await prisma.submission.create({
@@ -180,7 +198,7 @@ export async function POST(
         rating: rating || null,
         timeSpent: duration || null,
         status: "SUBMITTED",
-        payoutAmount: application.task.paymentPerWorker ?? application.task.totalBudget,
+        payoutAmount,
         payoutStatus: "PENDING",
       },
     })
