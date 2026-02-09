@@ -134,13 +134,8 @@ export default function SubmitResultsPage({
   }
 
   const validateForm = () => {
-    if (feedback.trim().length < 50) {
-      setError("Feedback must be at least 50 characters")
-      return false
-    }
-
-    if (uploadedFiles.length === 0) {
-      setError("Please upload at least one file as evidence")
+    if (feedback.trim().length < 10) {
+      setError("Feedback must be at least 10 characters")
       return false
     }
 
@@ -231,7 +226,7 @@ export default function SubmitResultsPage({
               <CardHeader>
                 <CardTitle>Task Feedback *</CardTitle>
                 <CardDescription>
-                  Describe your work in detail (minimum 50 characters)
+                  Describe your work in detail (minimum 10 characters)
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -244,8 +239,8 @@ export default function SubmitResultsPage({
                   disabled={submitting}
                 />
                 <div className="flex items-center justify-between text-sm">
-                  <span className={feedback.length < 50 ? "text-destructive" : "text-muted-foreground"}>
-                    {feedback.length} / 50 characters minimum
+                  <span className={feedback.length < 10 ? "text-destructive" : "text-muted-foreground"}>
+                    {feedback.length} / 10 characters minimum
                   </span>
                   <span className="text-muted-foreground">
                     {feedback.split(/\s+/).filter(Boolean).length} words
@@ -516,7 +511,7 @@ export default function SubmitResultsPage({
               </Button>
               <Button
                 type="submit"
-                disabled={submitting || feedback.length < 50 || uploadedFiles.length === 0}
+                disabled={submitting || feedback.length < 10}
                 className="flex-1"
               >
                 {submitting ? (

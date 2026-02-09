@@ -76,7 +76,7 @@ export async function POST(
           status: "trial_failed",
           message: "Trial task incomplete. Please ensure you provide detailed feedback, screenshots, and reasonable completion time.",
           requirements: {
-            feedback: "Minimum 50 characters",
+            feedback: "Minimum 10 characters",
             screenshots: "At least 1 screenshot required",
             duration: "Should be between 10-300 seconds",
           },
@@ -203,7 +203,7 @@ function validateTrialSubmission(
   duration: number | undefined
 ): boolean {
   // Check feedback length
-  if (!feedback || feedback.length < 50) {
+  if (!feedback || feedback.length < 10) {
     return false
   }
 
