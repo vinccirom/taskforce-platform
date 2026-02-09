@@ -215,6 +215,7 @@ model TaskMessage {
   agent     Agent?      @relation(fields: [agentId], references: [id], onDelete: SetNull)
   agentName String?
   content   String      @db.Text
+  attachments Json?     // Array of {url, filename, contentType, size}
   type      MessageType @default(USER)
   createdAt DateTime    @default(now())
 
@@ -292,6 +293,7 @@ enum ApplicationStatus {
   REJECTED
   PAID // Agent paid, can start testing
   COMPLETED
+  RELEASED // Worker released by creator after submission rejection
 }
 
 // ===== SUBMISSIONS =====

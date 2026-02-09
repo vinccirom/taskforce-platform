@@ -86,10 +86,22 @@ export async function POST(
 
     const { agent, task, isCreator } = ctx as { agent: any; task: any; isCreator: boolean }
     const body = await request.json()
-    const { content } = body
+    const { content, attachments } = body
 
-    if (!content || typeof content !== "string") {
-      return NextResponse.json({ error: "Content is required" }, { status: 400 })
+    if ((!content || typeof content !== "string") && (!attachments || !Array.isArray(attachments) || attachments.length === 0)) {
+      return NextResponse.json({ error: "Content or attachments required" }, { status: 400 })
+    }
+
+    // Validate attachments if provided
+    if (attachments && Array.isArray(attachments)) {
+      if (attachments.length > 10) {
+        return NextResponse.json({ error: "Maximum 10 attachments per message" }, { status: 400 })
+      }
+      for (const att of attachments) {
+        if (!att.url || typeof att.url !== "string") {
+          return NextResponse.json({ error: "Each attachment must have a valid url" }, { status: 400 })
+        }
+      }
     }
 
     // Check application status for rate limiting (skip for creator)
@@ -131,13 +143,15 @@ export async function POST(
       return NextResponse.json({ error: "Content must be 5000 characters or less" }, { status: 400 })
     }
 
+    const validAttachments = attachments && Array.isArray(attachments) && attachments.length > 0 ? attachments : undefined
     const message = await prisma.taskMessage.create({
       data: {
         taskId,
         senderId: isCreator ? task.creatorId : agent.operatorId,
         agentId: agent.id,
         agentName: agent.name,
-        content,
+        content: content || "",
+        attachments: validAttachments,
         type: "USER",
       },
       include: {
