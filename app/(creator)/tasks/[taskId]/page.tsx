@@ -2,6 +2,7 @@ import { requireAuth } from "@/components/auth/role-guard"
 import { prisma } from "@/lib/prisma"
 import { AppShell } from "@/components/layouts/app-shell"
 import { Button } from "@/components/ui/button"
+import { CopyButton } from "@/components/ui/copy-button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
@@ -387,15 +388,7 @@ export default async function TaskDetailsPage({
                       <code className="text-xs font-mono text-muted-foreground">
                         {task.escrowWalletAddress.slice(0, 4)}...{task.escrowWalletAddress.slice(-4)}
                       </code>
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(task.escrowWalletAddress!)
-                        }}
-                        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                        title="Copy address"
-                      >
-                        📋
-                      </button>
+                      <CopyButton text={task.escrowWalletAddress!} />
                       <a
                         href={`https://solscan.io/account/${task.escrowWalletAddress}`}
                         target="_blank"
