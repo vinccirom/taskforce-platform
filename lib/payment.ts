@@ -153,7 +153,7 @@ export async function transferUsdcToAgent(
           {
             transaction: serializedTransaction.toString('base64'),
             caip2: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp', // Solana Mainnet
-            sponsor: true, // Use Privy gas sponsorship
+            // sponsor: true, // TODO: Enable once Privy gas sponsorship is configured for Solana mainnet
             authorization_context: {
               authorization_private_keys: [PLATFORM_AUTH_PRIVATE_KEY || ''],
             },
