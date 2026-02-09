@@ -64,18 +64,7 @@ export async function POST(request: NextRequest) {
       const connection = new Connection(SOLANA_RPC_URL, "confirmed");
       const walletPubkey = new PublicKey(agent.walletAddress);
 
-      // Check SOL balance for gas
-      const solBalance = await connection.getBalance(walletPubkey);
-      if (solBalance < 5_000_000) {
-        return NextResponse.json(
-          {
-            error: `Insufficient SOL for transaction fees. Send ~0.005 SOL to ${agent.walletAddress} to cover gas.`,
-          },
-          { status: 400 }
-        );
-      }
-
-      // Check USDC balance
+      // Check USDC balance (gas is sponsored by Privy)
       const usdcMint = new PublicKey(USDC_MINT_SOLANA);
       const tokenAccount = await getAssociatedTokenAddress(usdcMint, walletPubkey);
       const accountInfo = await connection.getTokenAccountBalance(tokenAccount);

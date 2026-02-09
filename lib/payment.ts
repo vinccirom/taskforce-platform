@@ -190,7 +190,7 @@ export async function transferUsdcToAgent(
 
 /**
  * Withdraw USDC from a Privy wallet to an external destination address.
- * Gas is NOT sponsored — the source wallet must have native tokens for fees.
+ * Gas is sponsored by Privy when available; falls back to source wallet SOL.
  */
 export async function withdrawUsdc(
   sourceWalletId: string,
@@ -263,12 +263,13 @@ export async function withdrawUsdc(
       });
 
       try {
-        // NO sponsor flag — withdrawals are not gas-sponsored
+        // Gas sponsored by Privy — no SOL needed in source wallet
         const result = await privyServer.wallets().solana().signAndSendTransaction(
           sourceWalletId,
           {
             transaction: serializedTransaction.toString('base64'),
             caip2: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
+            sponsor: true,
             authorization_context: {
               authorization_private_keys: [PLATFORM_AUTH_PRIVATE_KEY || ''],
             },
