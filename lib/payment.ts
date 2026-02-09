@@ -132,35 +132,50 @@ export async function transferUsdcToAgent(
       )
     );
 
-    // Get recent blockhash
-    const { blockhash } = await connection.getLatestBlockhash();
-    transaction.recentBlockhash = blockhash;
-    transaction.feePayer = fromPubkey;
+    // Retry loop — blockhash can expire during Privy's signing round-trip
+    const MAX_RETRIES = 3;
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      // Get fresh blockhash on each attempt
+      const { blockhash } = await connection.getLatestBlockhash('finalized');
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = fromPubkey;
 
-    // Serialize transaction
-    const serializedTransaction = transaction.serialize({
-      requireAllSignatures: false,
-      verifySignatures: false,
-    });
+      // Serialize transaction
+      const serializedTransaction = transaction.serialize({
+        requireAllSignatures: false,
+        verifySignatures: false,
+      });
 
-    // Sign and send via Privy with authorization context
-    const result = await privyServer.wallets().solana().signAndSendTransaction(
-      sourceWalletId,
-      {
-        transaction: serializedTransaction.toString('base64'),
-        caip2: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp', // Solana Mainnet
-        authorization_context: {
-          authorization_private_keys: [PLATFORM_AUTH_PRIVATE_KEY || ''],
-        },
+      try {
+        // Sign and send via Privy with authorization context
+        const result = await privyServer.wallets().solana().signAndSendTransaction(
+          sourceWalletId,
+          {
+            transaction: serializedTransaction.toString('base64'),
+            caip2: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp', // Solana Mainnet
+            authorization_context: {
+              authorization_private_keys: [PLATFORM_AUTH_PRIVATE_KEY || ''],
+            },
+          }
+        );
+
+        console.log('✅ Transfer successful:', result.transaction_id);
+
+        return {
+          success: true,
+          transactionHash: result.transaction_id,
+        };
+      } catch (retryError: any) {
+        const msg = retryError?.message || String(retryError);
+        console.warn(`⚠️ Transfer attempt ${attempt}/${MAX_RETRIES} failed: ${msg}`);
+        if (attempt === MAX_RETRIES) throw retryError;
+        // Brief pause before retry
+        await new Promise(r => setTimeout(r, 1000));
       }
-    );
+    }
 
-    console.log('✅ Transfer successful:', result.transaction_id);
-
-    return {
-      success: true,
-      transactionHash: result.transaction_id,
-    };
+    // Should never reach here, but just in case
+    return { success: false, error: 'Max retries exceeded' };
   } catch (error: any) {
     console.error('❌ Transfer failed:', error.message);
     console.error('Error details:', error);
