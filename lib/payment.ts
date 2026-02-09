@@ -147,12 +147,13 @@ export async function transferUsdcToAgent(
       });
 
       try {
-        // Sign and send via Privy with authorization context
+        // Sign and send via Privy with gas sponsorship
         const result = await privyServer.wallets().solana().signAndSendTransaction(
           sourceWalletId,
           {
             transaction: serializedTransaction.toString('base64'),
             caip2: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp', // Solana Mainnet
+            sponsor: true, // Use Privy gas sponsorship
             authorization_context: {
               authorization_private_keys: [PLATFORM_AUTH_PRIVATE_KEY || ''],
             },
