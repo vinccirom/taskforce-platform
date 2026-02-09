@@ -6,6 +6,7 @@ import { StatCard } from "@/components/ui/stat-card"
 import { PageHeader } from "@/components/ui/page-header"
 import { ArrowDownLeft, ArrowUpRight, TrendingUp, TrendingDown, Minus, CheckCircle, Inbox } from "lucide-react"
 import { WalletDisplay as PayoutWalletSelector } from "@/components/earnings/payout-wallet-selector"
+import { WithdrawForm } from "@/components/payments/withdraw-form"
 import { PayoutStatus, MilestoneStatus } from "@prisma/client"
 import { PaymentsTable, type Transaction } from "./payments-table"
 
@@ -148,6 +149,11 @@ export default async function PaymentsPage() {
           solanaAddress={session.user.walletAddress ?? null}
           evmAddress={session.user.evmWalletAddress ?? null}
         />
+
+        {/* Withdraw */}
+        {session.user.walletAddress && (
+          <WithdrawForm walletAddress={session.user.walletAddress} />
+        )}
 
         {/* Unified Transaction Table */}
         {transactions.length > 0 ? (

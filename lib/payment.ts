@@ -188,6 +188,118 @@ export async function transferUsdcToAgent(
   }
 }
 
+/**
+ * Withdraw USDC from a Privy wallet to an external destination address.
+ * Gas is NOT sponsored — the source wallet must have native tokens for fees.
+ */
+export async function withdrawUsdc(
+  sourceWalletId: string,
+  sourceWalletAddress: string,
+  destinationAddress: string,
+  amountUsdc: number,
+  chain: 'solana' | 'base' = 'solana'
+): Promise<TransferResult> {
+  if (process.env.MOCK_TRANSFERS === 'true' && process.env.NODE_ENV !== 'production') {
+    console.log(`🎭 MOCK: Simulating withdrawal of ${amountUsdc} USDC to ${destinationAddress}`);
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    return {
+      success: true,
+      transactionHash: `mock_withdraw_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+    };
+  }
+
+  if (chain === 'base') {
+    // TODO: Implement Base chain withdrawals
+    return { success: false, error: 'Base chain withdrawals not yet implemented' };
+  }
+
+  try {
+    const amountLamports = Math.floor(amountUsdc * 1_000_000);
+    console.log(`💸 Withdrawing ${amountUsdc} USDC (${amountLamports} lamports) from ${sourceWalletAddress} to ${destinationAddress}`);
+
+    const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
+    const fromPubkey = new PublicKey(sourceWalletAddress);
+    const toPubkey = new PublicKey(destinationAddress);
+    const mintPubkey = new PublicKey(USDC_MINT_ADDRESS);
+
+    const fromTokenAccount = await getAssociatedTokenAddress(mintPubkey, fromPubkey);
+    const toTokenAccount = await getAssociatedTokenAddress(mintPubkey, toPubkey);
+
+    const transaction = new Transaction();
+
+    // Create recipient token account if it doesn't exist
+    const toAccountInfo = await connection.getAccountInfo(toTokenAccount);
+    if (!toAccountInfo) {
+      console.log('Creating associated token account for recipient...');
+      transaction.add(
+        createAssociatedTokenAccountInstruction(
+          fromPubkey,
+          toTokenAccount,
+          toPubkey,
+          mintPubkey
+        )
+      );
+    }
+
+    transaction.add(
+      createTransferInstruction(
+        fromTokenAccount,
+        toTokenAccount,
+        fromPubkey,
+        amountLamports
+      )
+    );
+
+    // Retry loop with fresh blockhash
+    const MAX_RETRIES = 3;
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      const { blockhash } = await connection.getLatestBlockhash('finalized');
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = fromPubkey;
+
+      const serializedTransaction = transaction.serialize({
+        requireAllSignatures: false,
+        verifySignatures: false,
+      });
+
+      try {
+        // NO sponsor flag — withdrawals are not gas-sponsored
+        const result = await privyServer.wallets().solana().signAndSendTransaction(
+          sourceWalletId,
+          {
+            transaction: serializedTransaction.toString('base64'),
+            caip2: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
+            authorization_context: {
+              authorization_private_keys: [PLATFORM_AUTH_PRIVATE_KEY || ''],
+            },
+          }
+        );
+
+        const txHash = (result as any).hash || (result as any).transaction_id || JSON.stringify(result);
+        console.log('✅ Withdrawal successful:', txHash);
+
+        return {
+          success: true,
+          transactionHash: txHash,
+        };
+      } catch (retryError: any) {
+        const msg = retryError?.message || String(retryError);
+        console.warn(`⚠️ Withdrawal attempt ${attempt}/${MAX_RETRIES} failed: ${msg}`);
+        if (attempt === MAX_RETRIES) throw retryError;
+        await new Promise(r => setTimeout(r, 1000));
+      }
+    }
+
+    return { success: false, error: 'Max retries exceeded' };
+  } catch (error: any) {
+    console.error('❌ Withdrawal failed:', error.message);
+    return {
+      success: false,
+      error: error.message || 'Withdrawal failed',
+    };
+  }
+}
+
 // Platform revenue wallet for fees
 const PLATFORM_REVENUE_SOLANA = process.env.PLATFORM_REVENUE_SOLANA || '';
 
