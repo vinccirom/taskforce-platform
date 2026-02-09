@@ -97,6 +97,7 @@ export async function POST(
         milestone.amount,
         milestone.task.escrowWalletId ?? undefined,
         milestone.task.escrowWalletAddress ?? undefined,
+        milestone.task.paymentChain === 'EVM' ? 'base' : 'solana',
       )
 
       if (payoutResult.success) {

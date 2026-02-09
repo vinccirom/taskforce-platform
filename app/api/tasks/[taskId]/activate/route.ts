@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { requireAuth } from "@/components/auth/role-guard"
 import { Connection, PublicKey, ParsedTransactionWithMeta } from "@solana/web3.js"
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token"
+import { getBaseUsdcBalance } from "@/lib/payment"
 
 const PLATFORM_WALLET = process.env.PLATFORM_WALLET_ADDRESS || ""
 const USDC_MINT = process.env.USDC_MINT || ""
@@ -65,7 +66,41 @@ export async function POST(
       })
     }
 
-    // REAL VERIFICATION
+    // BASE CHAIN: verify via balance check
+    if (paymentChain === 'EVM') {
+      const targetWallet = task.escrowWalletAddress || PLATFORM_WALLET
+      let verified = false
+      try {
+        const balance = await getBaseUsdcBalance(targetWallet)
+        const tolerance = 0.01
+        if (balance >= task.totalBudget - tolerance) {
+          verified = true
+        }
+      } catch (e: any) {
+        console.error('Base balance verification failed:', e.message)
+      }
+
+      if (!verified) {
+        return NextResponse.json(
+          { error: "Base USDC payment not found or insufficient balance" },
+          { status: 400 }
+        )
+      }
+
+      await prisma.task.update({
+        where: { id: taskId },
+        data: { status: "ACTIVE", paymentChain: "EVM", updatedAt: new Date() },
+      })
+
+      console.log(`✅ Task ${taskId} activated on Base chain`)
+      return NextResponse.json({
+        success: true,
+        message: "Task activated successfully (Base)",
+        transactionHash: `base_balance_verified_${Date.now()}`,
+      })
+    }
+
+    // SOLANA VERIFICATION
     const connection = new Connection(SOLANA_RPC_URL, "confirmed")
     
     // Use task-specific escrow wallet if available, otherwise fallback to platform wallet

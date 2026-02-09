@@ -34,6 +34,54 @@ const SOLANA_RPC_URL = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.s
 // USDC token mint address
 const USDC_MINT_ADDRESS = process.env.USDC_MINT || 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 
+// Base chain config
+const BASE_RPC_URL = process.env.BASE_RPC_URL || '';
+const USDC_MINT_BASE = process.env.USDC_MINT_BASE || '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
+
+/**
+ * Encode an ERC-20 transfer(address,uint256) call without external deps
+ */
+function encodeErc20Transfer(to: string, amount: bigint): string {
+  const selector = '0xa9059cbb';
+  const paddedTo = to.toLowerCase().replace('0x', '').padStart(64, '0');
+  const paddedAmount = amount.toString(16).padStart(64, '0');
+  return selector + paddedTo + paddedAmount;
+}
+
+/**
+ * Encode an ERC-20 balanceOf(address) call
+ */
+function encodeErc20BalanceOf(address: string): string {
+  const selector = '0x70a08231';
+  const paddedAddress = address.toLowerCase().replace('0x', '').padStart(64, '0');
+  return selector + paddedAddress;
+}
+
+/**
+ * Query Base USDC balance for an address via JSON-RPC
+ */
+export async function getBaseUsdcBalance(walletAddress: string): Promise<number> {
+  const rpcUrl = BASE_RPC_URL;
+  if (!rpcUrl) throw new Error('BASE_RPC_URL not configured');
+
+  const data = encodeErc20BalanceOf(walletAddress);
+  const response = await fetch(rpcUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'eth_call',
+      params: [{ to: USDC_MINT_BASE, data }, 'latest'],
+    }),
+  });
+
+  const json = await response.json();
+  if (json.error) throw new Error(json.error.message || 'RPC error');
+  const rawBalance = BigInt(json.result || '0x0');
+  return Number(rawBalance) / 1_000_000;
+}
+
 export interface TransferResult {
   success: boolean;
   transactionHash?: string;
@@ -53,7 +101,8 @@ export async function transferUsdcToAgent(
   agentWalletAddress: string,
   amountUsdc: number,
   fromWalletId?: string,
-  fromWalletAddress?: string
+  fromWalletAddress?: string,
+  chain: 'solana' | 'base' = 'solana'
 ): Promise<TransferResult> {
   // Use provided wallet or fallback to platform escrow
   const sourceWalletId = fromWalletId || PLATFORM_ESCROW_WALLET_ID;
@@ -65,10 +114,6 @@ export async function transferUsdcToAgent(
       error: 'Source wallet not configured',
     };
   }
-
-  // TODO: Base chain support — when task.paymentChain === 'BASE', use Base RPC
-  // (e.g. https://mainnet.base.org), Base USDC address (0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913),
-  // and caip2 'eip155:8453'. Currently all payouts go through Solana.
 
   // MOCK MODE: For testing without real USDC (disabled in production)
   if (process.env.MOCK_TRANSFERS === 'true' && process.env.NODE_ENV !== 'production') {
@@ -82,6 +127,54 @@ export async function transferUsdcToAgent(
     };
   }
 
+  // ---- Base chain transfer ----
+  if (chain === 'base') {
+    try {
+      const amountRaw = BigInt(Math.floor(amountUsdc * 1_000_000));
+      const data = encodeErc20Transfer(agentWalletAddress, amountRaw);
+
+      console.log(`💸 [Base] Transferring ${amountUsdc} USDC to ${agentWalletAddress}`);
+
+      const MAX_RETRIES = 3;
+      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          const result = await (privyServer.wallets() as any).ethereum().sendTransaction(
+            sourceWalletId,
+            {
+              caip2: 'eip155:8453',
+              method: 'eth_sendTransaction',
+              params: {
+                transaction: {
+                  to: USDC_MINT_BASE,
+                  data,
+                  value: '0x0',
+                },
+              },
+              sponsor: true,
+              authorization_context: {
+                authorization_private_keys: [PLATFORM_AUTH_PRIVATE_KEY || ''],
+              },
+            }
+          );
+
+          const txHash = (result as any).hash || (result as any).transaction_hash || JSON.stringify(result);
+          console.log('✅ [Base] Transfer successful:', txHash);
+          return { success: true, transactionHash: txHash };
+        } catch (retryError: any) {
+          const msg = retryError?.message || String(retryError);
+          console.warn(`⚠️ [Base] Transfer attempt ${attempt}/${MAX_RETRIES} failed: ${msg}`);
+          if (attempt === MAX_RETRIES) throw retryError;
+          await new Promise(r => setTimeout(r, 1000));
+        }
+      }
+      return { success: false, error: 'Max retries exceeded' };
+    } catch (error: any) {
+      console.error('❌ [Base] Transfer failed:', error.message);
+      return { success: false, error: error.message || 'Base transfer failed' };
+    }
+  }
+
+  // ---- Solana chain transfer ----
   try {
     // Convert USDC amount to lamports (USDC has 6 decimals)
     const amountLamports = Math.floor(amountUsdc * 1_000_000);
@@ -213,8 +306,49 @@ export async function withdrawUsdc(
   }
 
   if (chain === 'base') {
-    // TODO: Implement Base chain withdrawals
-    return { success: false, error: 'Base chain withdrawals not yet implemented' };
+    try {
+      const amountRaw = BigInt(Math.floor(amountUsdc * 1_000_000));
+      const data = encodeErc20Transfer(destinationAddress, amountRaw);
+
+      console.log(`💸 [Base] Withdrawing ${amountUsdc} USDC from ${sourceWalletAddress} to ${destinationAddress}`);
+
+      const MAX_RETRIES = 3;
+      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          const result = await (privyServer.wallets() as any).ethereum().sendTransaction(
+            sourceWalletId,
+            {
+              caip2: 'eip155:8453',
+              method: 'eth_sendTransaction',
+              params: {
+                transaction: {
+                  to: USDC_MINT_BASE,
+                  data,
+                  value: '0x0',
+                },
+              },
+              sponsor: true,
+              authorization_context: {
+                authorization_private_keys: [PLATFORM_AUTH_PRIVATE_KEY || ''],
+              },
+            }
+          );
+
+          const txHash = (result as any).hash || (result as any).transaction_hash || JSON.stringify(result);
+          console.log('✅ [Base] Withdrawal successful:', txHash);
+          return { success: true, transactionHash: txHash };
+        } catch (retryError: any) {
+          const msg = retryError?.message || String(retryError);
+          console.warn(`⚠️ [Base] Withdrawal attempt ${attempt}/${MAX_RETRIES} failed: ${msg}`);
+          if (attempt === MAX_RETRIES) throw retryError;
+          await new Promise(r => setTimeout(r, 1000));
+        }
+      }
+      return { success: false, error: 'Max retries exceeded' };
+    } catch (error: any) {
+      console.error('❌ [Base] Withdrawal failed:', error.message);
+      return { success: false, error: error.message || 'Base withdrawal failed' };
+    }
   }
 
   try {

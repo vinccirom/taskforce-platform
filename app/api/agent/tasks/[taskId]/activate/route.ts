@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { authenticateAgent } from "@/lib/api-auth"
 import { Connection, PublicKey } from "@solana/web3.js"
 import { getAssociatedTokenAddress } from "@solana/spl-token"
+import { getBaseUsdcBalance } from "@/lib/payment"
 
 const SOLANA_RPC_URL = process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com"
 const USDC_MINT = process.env.USDC_MINT || "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
@@ -39,18 +40,30 @@ export async function POST(
       return NextResponse.json({ error: "Task has no escrow wallet" }, { status: 400 })
     }
 
-    // Verify USDC balance in escrow
-    const connection = new Connection(SOLANA_RPC_URL, "confirmed")
-    const escrowPubkey = new PublicKey(task.escrowWalletAddress)
-    const usdcMint = new PublicKey(USDC_MINT)
+    // Determine payment chain — check if escrow wallet looks like an EVM address
+    const isBaseChain = task.paymentChain === 'EVM' || task.escrowWalletAddress.startsWith('0x')
 
+    // Verify USDC balance in escrow
     let escrowBalance = 0
-    try {
-      const tokenAccount = await getAssociatedTokenAddress(usdcMint, escrowPubkey)
-      const accountInfo = await connection.getTokenAccountBalance(tokenAccount)
-      escrowBalance = accountInfo.value.uiAmount || 0
-    } catch {
-      // Token account doesn't exist yet
+
+    if (isBaseChain) {
+      try {
+        escrowBalance = await getBaseUsdcBalance(task.escrowWalletAddress)
+      } catch (e: any) {
+        console.error('Base balance check failed:', e.message)
+      }
+    } else {
+      const connection = new Connection(SOLANA_RPC_URL, "confirmed")
+      const escrowPubkey = new PublicKey(task.escrowWalletAddress)
+      const usdcMint = new PublicKey(USDC_MINT)
+
+      try {
+        const tokenAccount = await getAssociatedTokenAddress(usdcMint, escrowPubkey)
+        const accountInfo = await connection.getTokenAccountBalance(tokenAccount)
+        escrowBalance = accountInfo.value.uiAmount || 0
+      } catch {
+        // Token account doesn't exist yet
+      }
     }
 
     if (escrowBalance < task.totalBudget) {
@@ -65,7 +78,7 @@ export async function POST(
     // Activate the task
     await prisma.task.update({
       where: { id: taskId },
-      data: { status: "ACTIVE", paymentChain: "SOLANA" },
+      data: { status: "ACTIVE", paymentChain: isBaseChain ? "EVM" : "SOLANA" },
     })
 
     console.log(`✅ Agent ${agent.name} activated task ${taskId} (${escrowBalance} USDC in escrow)`)

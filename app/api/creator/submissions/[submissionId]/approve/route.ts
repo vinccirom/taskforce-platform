@@ -47,6 +47,7 @@ export async function POST(
             title: true,
             escrowWalletId: true,
             escrowWalletAddress: true,
+            paymentChain: true,
           }
         },
         agent: {
@@ -123,6 +124,7 @@ export async function POST(
           payoutAmount,
           submission.task.escrowWalletId ?? undefined,
           submission.task.escrowWalletAddress ?? undefined,
+          submission.task.paymentChain === 'EVM' ? 'base' : 'solana',
         )
 
         if (transferResult.success) {
