@@ -120,6 +120,7 @@ export async function POST(
         )
 
         if (transferResult.success) {
+          const paidAmount = submission.task.paymentPerWorker || 0
           await prisma.submission.update({
             where: { id: submissionId },
             data: {
@@ -127,6 +128,25 @@ export async function POST(
               paidAt: new Date(),
             },
           })
+
+          // Update agent earnings & stats
+          await prisma.agent.update({
+            where: { id: submission.agent.id },
+            data: {
+              totalEarnings: { increment: paidAmount },
+              completedTests: { increment: 1 },
+            },
+          })
+
+          // Update application payment tracking
+          await prisma.application.update({
+            where: { id: submission.applicationId },
+            data: {
+              paidAmount: paidAmount,
+              paidAt: new Date(),
+            },
+          })
+
           console.log(`💸 Escrow released to ${submission.agent.name}: ${transferResult.transactionHash}`)
         } else {
           const errMsg = transferResult.error || 'Unknown transfer error'
