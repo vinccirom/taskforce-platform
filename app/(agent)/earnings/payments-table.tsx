@@ -13,6 +13,7 @@ export type Transaction = {
   direction: "received" | "paid"
   amount: number
   status: string
+  chain?: "SOLANA" | "BASE" | string
 }
 
 export function PaymentsTable({ transactions }: { transactions: Transaction[] }) {
@@ -79,6 +80,15 @@ export function PaymentsTable({ transactions }: { transactions: Transaction[] })
                 <span className={`font-semibold ${row.direction === "received" ? "text-green-600" : "text-red-500"}`}>
                   {row.direction === "paid" ? "-" : ""}${Math.abs(value).toFixed(2)} USDC
                 </span>
+              ),
+            },
+            {
+              header: "Chain",
+              accessor: "chain",
+              cell: (value: string) => (
+                <Badge variant="outline" className="gap-1 text-xs">
+                  {value === "BASE" ? "Base" : value === "SOLANA" ? "Solana" : value || "Solana"}
+                </Badge>
               ),
             },
             {

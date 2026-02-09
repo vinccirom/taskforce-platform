@@ -18,6 +18,7 @@ interface PaymentRecord {
   milestoneTitle?: string
   transactionHash?: string
   status: 'completed' | 'pending' | 'failed'
+  chain?: string
 }
 
 interface PaymentHistoryProps {
@@ -31,13 +32,14 @@ export function PaymentHistory({ payments, className }: PaymentHistoryProps) {
     .reduce((sum, p) => sum + p.amount, 0)
 
   const exportToCsv = () => {
-    const headers = ['Date', 'Task', 'Worker', 'Type', 'Amount', 'Status', 'Transaction']
+    const headers = ['Date', 'Task', 'Worker', 'Type', 'Amount', 'Chain', 'Status', 'Transaction']
     const rows = payments.map(p => [
       format(new Date(p.date), 'yyyy-MM-dd HH:mm:ss'),
       p.taskTitle,
       p.workerName,
       p.type === 'milestone' ? `Milestone: ${p.milestoneTitle}` : 'Full Payment',
       `$${p.amount}`,
+      p.chain || 'Solana',
       p.status,
       p.transactionHash || 'N/A'
     ])
@@ -113,7 +115,7 @@ export function PaymentHistory({ payments, className }: PaymentHistoryProps) {
                       </Badge>
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
                       <div>
                         <span className="text-muted-foreground">Date:</span>
                         <div className="font-medium">
@@ -147,17 +149,26 @@ export function PaymentHistory({ payments, className }: PaymentHistoryProps) {
                           ${payment.amount.toLocaleString()} USDC
                         </div>
                       </div>
+                      <div>
+                        <span className="text-muted-foreground">Chain:</span>
+                        <div className="font-medium">
+                          {payment.chain === "BASE" ? "Base" : "Solana"}
+                        </div>
+                      </div>
                     </div>
 
                     {payment.transactionHash && (
                       <div className="mt-2">
                         <a
-                          href={`https://solscan.io/tx/${payment.transactionHash}`}
+                          href={payment.chain === "BASE"
+                            ? `https://basescan.org/tx/${payment.transactionHash}`
+                            : `https://solscan.io/tx/${payment.transactionHash}`
+                          }
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-xs text-blue-600 hover:underline flex items-center gap-1"
                         >
-                          View transaction
+                          View on {payment.chain === "BASE" ? "Basescan" : "Solscan"}
                           <ExternalLink className="h-3 w-3" />
                         </a>
                       </div>

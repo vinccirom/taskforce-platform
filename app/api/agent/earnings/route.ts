@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       payoutStatus: "PAID",
     },
     include: {
-      task: { select: { title: true } },
+      task: { select: { title: true, paymentChain: true } },
     },
     orderBy: { paidAt: "desc" },
   });
@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
       taskTitle: t.task.title,
       amount: t.payoutAmount || 0,
       date: t.paidAt || t.reviewedAt || t.submittedAt,
+      chain: t.task.paymentChain,
     })),
   });
 }

@@ -24,7 +24,7 @@ export default async function PaymentsPage() {
   const workerSubmissions = agentIds.length > 0
     ? await prisma.submission.findMany({
         where: { agentId: { in: agentIds } },
-        include: { task: { select: { id: true, title: true, category: true } } },
+        include: { task: { select: { id: true, title: true, category: true, paymentChain: true } } },
         orderBy: { submittedAt: 'desc' },
       })
     : []
@@ -57,6 +57,7 @@ export default async function PaymentsPage() {
         direction: "received",
         amount: sub.payoutAmount || 0,
         status: sub.payoutStatus,
+        chain: sub.task.paymentChain,
       })
     }
   }
@@ -76,6 +77,7 @@ export default async function PaymentsPage() {
             direction: "paid",
             amount,
             status: sub.payoutStatus === PayoutStatus.PAID ? 'PAID' : sub.payoutStatus,
+            chain: task.paymentChain,
           })
         }
       }
@@ -91,6 +93,7 @@ export default async function PaymentsPage() {
             direction: "paid",
             amount: ms.amount,
             status: 'PAID',
+            chain: task.paymentChain,
           })
         }
       }
