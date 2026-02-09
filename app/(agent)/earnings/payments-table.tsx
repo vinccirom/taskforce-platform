@@ -13,7 +13,7 @@ export type Transaction = {
   direction: "received" | "paid"
   amount: number
   status: string
-  chain?: "SOLANA" | "BASE" | string
+  chain?: "SOLANA" | "EVM" | string
 }
 
 export function PaymentsTable({ transactions }: { transactions: Transaction[] }) {
@@ -87,7 +87,7 @@ export function PaymentsTable({ transactions }: { transactions: Transaction[] })
               accessor: "chain",
               cell: (value: string) => (
                 <Badge variant="outline" className="gap-1 text-xs">
-                  {value === "BASE" ? "Base" : value === "SOLANA" ? "Solana" : value || "Solana"}
+                  {value === "EVM" ? "Base" : value === "SOLANA" ? "Solana" : value || "Solana"}
                 </Badge>
               ),
             },

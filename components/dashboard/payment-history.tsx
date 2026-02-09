@@ -152,7 +152,7 @@ export function PaymentHistory({ payments, className }: PaymentHistoryProps) {
                       <div>
                         <span className="text-muted-foreground">Chain:</span>
                         <div className="font-medium">
-                          {payment.chain === "BASE" ? "Base" : "Solana"}
+                          {payment.chain === "EVM" ? "Base" : "Solana"}
                         </div>
                       </div>
                     </div>
@@ -160,7 +160,7 @@ export function PaymentHistory({ payments, className }: PaymentHistoryProps) {
                     {payment.transactionHash && (
                       <div className="mt-2">
                         <a
-                          href={payment.chain === "BASE"
+                          href={payment.chain === "EVM"
                             ? `https://basescan.org/tx/${payment.transactionHash}`
                             : `https://solscan.io/tx/${payment.transactionHash}`
                           }
@@ -168,7 +168,7 @@ export function PaymentHistory({ payments, className }: PaymentHistoryProps) {
                           rel="noopener noreferrer"
                           className="text-xs text-blue-600 hover:underline flex items-center gap-1"
                         >
-                          View on {payment.chain === "BASE" ? "Basescan" : "Solscan"}
+                          View on {payment.chain === "EVM" ? "Basescan" : "Solscan"}
                           <ExternalLink className="h-3 w-3" />
                         </a>
                       </div>
