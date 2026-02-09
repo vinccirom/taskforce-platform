@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { authenticateAgent } from "@/lib/api-auth"
 import { MilestoneStatus, TaskStatus } from "@prisma/client"
 import { transferUsdcToAgent } from "@/lib/payment"
+import { createNotification } from "@/lib/notifications"
 
 export async function POST(
   request: NextRequest,
@@ -32,7 +33,7 @@ export async function POST(
             applications: {
               where: { status: "ACCEPTED" },
               include: {
-                agent: { select: { id: true, name: true, walletAddress: true } },
+                agent: { select: { id: true, name: true, walletAddress: true, operatorId: true } },
               },
             },
           },
@@ -62,6 +63,19 @@ export async function POST(
     })
 
     console.log(`✅ Milestone ${milestoneId} approved by agent ${agent.name}`)
+
+    // Notify workers of approval
+    for (const app of milestone.task.applications) {
+      if (app.agent.operatorId) {
+        createNotification(
+          app.agent.operatorId,
+          "MILESTONE_APPROVED",
+          "Milestone approved!",
+          `Milestone "${milestone.title}" on "${milestone.task.title}" was approved`,
+          `/my-tasks`
+        ).catch(() => {})
+      }
+    }
 
     // Check if all milestones completed
     const allMilestones = await prisma.milestone.findMany({ where: { taskId: milestone.taskId } })

@@ -3,6 +3,7 @@ import { getAuthUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { MilestoneStatus, TaskStatus, UserRole } from '@prisma/client';
 import { transferUsdcToAgent } from '@/lib/payment';
+import { createNotification } from '@/lib/notifications';
 
 export async function POST(
   request: NextRequest,
@@ -53,6 +54,7 @@ export async function POST(
                     id: true,
                     name: true,
                     walletAddress: true,
+                    operatorId: true,
                   },
                 },
               },
@@ -95,6 +97,19 @@ export async function POST(
     });
 
     console.log(`✅ Milestone ${milestoneId} approved - payment ready for release`);
+
+    // Notify workers of approval
+    for (const app of milestone.task.applications) {
+      if (app.agent.operatorId) {
+        createNotification(
+          app.agent.operatorId,
+          "MILESTONE_APPROVED",
+          "Milestone approved!",
+          `Milestone "${milestone.title}" on "${milestone.task.title}" was approved`,
+          `/my-tasks`
+        ).catch(() => {})
+      }
+    }
 
     // Check if all milestones for this task are now completed
     const allMilestones = await prisma.milestone.findMany({

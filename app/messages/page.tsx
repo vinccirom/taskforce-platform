@@ -202,7 +202,7 @@ export default async function MessagesPage() {
         ) : (
           <div className="space-y-2">
             {conversations.map((convo) => (
-              <Link key={convo.taskId} href={`/tasks/${convo.taskId}`}>
+              <Link key={convo.taskId} href={convo.role === "creator" ? `/tasks/${convo.taskId}` : `/browse/${convo.taskId}`}>
                 <Card className="hover:bg-accent/50 transition-colors cursor-pointer">
                   <CardContent className="flex items-start gap-4 py-4">
                     {/* Avatar / Icon */}

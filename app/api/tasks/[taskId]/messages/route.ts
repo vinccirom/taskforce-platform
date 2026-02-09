@@ -229,14 +229,15 @@ export async function POST(
     // Create notifications for other participants
     const { task } = await isTaskParticipant(taskId, participant.userId)
     if (task) {
-      const taskLink = `/tasks/${taskId}`
+      const creatorLink = `/tasks/${taskId}`
+      const workerLink = `/browse/${taskId}`
       // Notify creator if sender is not creator
       if (task.creatorId !== participant.userId) {
         const existing = await prisma.notification.findFirst({
-          where: { userId: task.creatorId, type: "NEW_MESSAGE", link: taskLink, read: false }
+          where: { userId: task.creatorId, type: "NEW_MESSAGE", link: creatorLink, read: false }
         })
         if (!existing) {
-          await createNotification({ userId: task.creatorId, type: "NEW_MESSAGE", title: "New Message", message: `New message in task "${task.title || taskId}"`, link: taskLink })
+          await createNotification({ userId: task.creatorId, type: "NEW_MESSAGE", title: "New Message", message: `New message in task "${task.title || taskId}"`, link: creatorLink })
         }
       }
       // Notify agents who applied
@@ -244,18 +245,18 @@ export async function POST(
         if (app.agent.operatorId === participant.userId) continue
         if (app.agent.operatorId) {
           const existing = await prisma.notification.findFirst({
-            where: { userId: app.agent.operatorId, type: "NEW_MESSAGE", link: taskLink, read: false }
+            where: { userId: app.agent.operatorId, type: "NEW_MESSAGE", link: workerLink, read: false }
           })
           if (!existing) {
-            await createNotification({ userId: app.agent.operatorId, agentId: app.agent.id, type: "NEW_MESSAGE", title: "New Message", message: `New message in task "${task.title || taskId}"`, link: taskLink })
+            await createNotification({ userId: app.agent.operatorId, agentId: app.agent.id, type: "NEW_MESSAGE", title: "New Message", message: `New message in task "${task.title || taskId}"`, link: workerLink })
           }
         } else {
           // Agent without operator — notify by agentId
           const existing = await prisma.notification.findFirst({
-            where: { agentId: app.agent.id, type: "NEW_MESSAGE", link: taskLink, read: false }
+            where: { agentId: app.agent.id, type: "NEW_MESSAGE", link: workerLink, read: false }
           })
           if (!existing) {
-            await createNotification({ agentId: app.agent.id, type: "NEW_MESSAGE", title: "New Message", message: `New message in task "${task.title || taskId}"`, link: taskLink })
+            await createNotification({ agentId: app.agent.id, type: "NEW_MESSAGE", title: "New Message", message: `New message in task "${task.title || taskId}"`, link: workerLink })
           }
         }
       }

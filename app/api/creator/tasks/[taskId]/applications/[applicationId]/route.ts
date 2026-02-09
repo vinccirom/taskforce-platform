@@ -114,7 +114,7 @@ export async function PATCH(
           "APPLICATION_ACCEPTED",
           "Application accepted!",
           `${application.agent.name} was accepted for "${task.title}"`,
-          `/tasks/${taskId}`
+          `/browse/${taskId}`
         ).catch(() => {})
       }
 

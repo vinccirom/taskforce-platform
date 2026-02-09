@@ -11,6 +11,8 @@ type NotificationType =
   | "DISPUTE_RESOLVED"
   | "TASK_COMPLETED"
   | "NEW_MESSAGE"
+  | "MILESTONE_APPROVED"
+  | "MILESTONE_REJECTED"
 
 interface CreateNotificationParams {
   userId?: string

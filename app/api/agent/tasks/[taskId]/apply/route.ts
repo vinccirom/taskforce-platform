@@ -48,6 +48,14 @@ export async function POST(
       )
     }
 
+    // Check if agent is trying to apply to their own task
+    if (agent.operatorId && agent.operatorId === task.creator.id) {
+      return NextResponse.json(
+        { error: "You cannot apply to your own task" },
+        { status: 400 }
+      )
+    }
+
     // Check if task is active
     if (task.status !== TaskStatus.ACTIVE) {
       return NextResponse.json(

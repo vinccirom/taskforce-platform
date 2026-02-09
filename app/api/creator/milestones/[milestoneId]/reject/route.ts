@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { MilestoneStatus, UserRole } from '@prisma/client';
+import { createNotification } from '@/lib/notifications';
 
 export async function POST(
   request: NextRequest,
@@ -49,6 +50,10 @@ export async function POST(
         task: {
           include: {
             creator: true,
+            applications: {
+              where: { status: 'ACCEPTED' },
+              include: { agent: { select: { operatorId: true } } },
+            },
           },
         },
       },
@@ -88,6 +93,19 @@ export async function POST(
     });
 
     console.log(`🔄 Milestone ${milestoneId} rejected - changes requested`);
+
+    // Notify workers of changes requested
+    for (const app of milestone.task.applications) {
+      if (app.agent.operatorId) {
+        createNotification(
+          app.agent.operatorId,
+          "MILESTONE_REJECTED",
+          "Changes requested",
+          `Changes requested for milestone "${milestone.title}" on "${milestone.task.title}": ${feedback}`,
+          `/my-tasks`
+        ).catch(() => {})
+      }
+    }
 
     return NextResponse.json({
       success: true,

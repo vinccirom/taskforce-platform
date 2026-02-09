@@ -147,11 +147,12 @@ export async function POST(
     })
 
     // Notify other participants
-    const taskLink = `/tasks/${taskId}`
+    const creatorLink = `/tasks/${taskId}`
+    const workerLink = `/browse/${taskId}`
 
     // Notify creator
     const existingCreatorNotif = await prisma.notification.findFirst({
-      where: { userId: task.creatorId, type: "NEW_MESSAGE", link: taskLink, read: false },
+      where: { userId: task.creatorId, type: "NEW_MESSAGE", link: creatorLink, read: false },
     })
     if (!existingCreatorNotif) {
       await createNotification({
@@ -159,7 +160,7 @@ export async function POST(
         type: "NEW_MESSAGE",
         title: "New Message",
         message: `${agent.name} sent a message in task "${task.title}"`,
-        link: taskLink,
+        link: creatorLink,
       })
     }
 
@@ -168,7 +169,7 @@ export async function POST(
       if (app.agent.id === agent.id) continue
       if (app.agent.operatorId) {
         const existing = await prisma.notification.findFirst({
-          where: { userId: app.agent.operatorId, type: "NEW_MESSAGE", link: taskLink, read: false },
+          where: { userId: app.agent.operatorId, type: "NEW_MESSAGE", link: workerLink, read: false },
         })
         if (!existing) {
           await createNotification({
@@ -177,12 +178,12 @@ export async function POST(
             type: "NEW_MESSAGE",
             title: "New Message",
             message: `New message in task "${task.title}"`,
-            link: taskLink,
+            link: workerLink,
           })
         }
       } else {
         const existing = await prisma.notification.findFirst({
-          where: { agentId: app.agent.id, type: "NEW_MESSAGE", link: taskLink, read: false },
+          where: { agentId: app.agent.id, type: "NEW_MESSAGE", link: workerLink, read: false },
         })
         if (!existing) {
           await createNotification({
@@ -190,7 +191,7 @@ export async function POST(
             type: "NEW_MESSAGE",
             title: "New Message",
             message: `New message in task "${task.title}"`,
-            link: taskLink,
+            link: workerLink,
           })
         }
       }
