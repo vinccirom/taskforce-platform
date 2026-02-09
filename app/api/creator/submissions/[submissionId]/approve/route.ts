@@ -42,6 +42,8 @@ export async function POST(
           select: {
             creatorId: true,
             paymentPerWorker: true,
+            totalBudget: true,
+            maxWorkers: true,
             title: true,
             escrowWalletId: true,
             escrowWalletAddress: true,
@@ -72,6 +74,10 @@ export async function POST(
       )
     }
 
+    // Calculate payout: paymentPerWorker if set, else totalBudget / maxWorkers
+    const payoutAmount = submission.task.paymentPerWorker
+      ?? (submission.task.totalBudget / (submission.task.maxWorkers || 1))
+
     // Atomic conditional update: only approve if still SUBMITTED (prevents race condition)
     const updateResult = await prisma.submission.updateMany({
       where: { id: submissionId, status: SubmissionStatus.SUBMITTED },
@@ -79,7 +85,7 @@ export async function POST(
         status: SubmissionStatus.APPROVED,
         reviewedAt: new Date(),
         reviewNotes: reviewNotes || null,
-        payoutAmount: submission.task.paymentPerWorker,
+        payoutAmount,
         payoutStatus: PayoutStatus.PROCESSING,
       }
     })
@@ -96,7 +102,7 @@ export async function POST(
     })
 
     console.log(`✅ Submission ${submissionId} approved by creator`)
-    console.log(`💰 Payout of ${submission.task.paymentPerWorker} USDC approved for agent ${submission.agent.name}`)
+    console.log(`💰 Payout of ${payoutAmount} USDC approved for agent ${submission.agent.name}`)
 
     // Notify worker of approval
     if (submission.agent.operatorId) {
@@ -110,11 +116,11 @@ export async function POST(
     }
 
     // Release funds from escrow to agent wallet
-    if (submission.agent.walletAddress && submission.task.paymentPerWorker) {
+    if (submission.agent.walletAddress && payoutAmount > 0) {
       try {
         const transferResult = await transferUsdcToAgent(
           submission.agent.walletAddress,
-          submission.task.paymentPerWorker,
+          payoutAmount,
           submission.task.escrowWalletId ?? undefined,
           submission.task.escrowWalletAddress ?? undefined,
         )

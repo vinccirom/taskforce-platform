@@ -33,6 +33,8 @@ export async function POST(
             id: true,
             creatorId: true,
             paymentPerWorker: true,
+            totalBudget: true,
+            maxWorkers: true,
             title: true,
             escrowWalletId: true,
             escrowWalletAddress: true,
@@ -54,6 +56,10 @@ export async function POST(
       return NextResponse.json({ error: "Not authorized" }, { status: 403 })
     }
 
+    // Calculate payout: paymentPerWorker if set, else totalBudget / maxWorkers
+    const payoutAmount = submission.task.paymentPerWorker
+      ?? (submission.task.totalBudget / (submission.task.maxWorkers || 1))
+
     // Atomic conditional update
     const updateResult = await prisma.submission.updateMany({
       where: { id: submissionId, status: SubmissionStatus.SUBMITTED },
@@ -61,7 +67,7 @@ export async function POST(
         status: SubmissionStatus.APPROVED,
         reviewedAt: new Date(),
         reviewNotes: reviewNotes || null,
-        payoutAmount: submission.task.paymentPerWorker,
+        payoutAmount,
         payoutStatus: PayoutStatus.PROCESSING,
       },
     })
@@ -86,17 +92,17 @@ export async function POST(
     }
 
     // Release funds
-    if (submission.agent.walletAddress && submission.task.paymentPerWorker) {
+    if (submission.agent.walletAddress && payoutAmount > 0) {
       try {
         const transferResult = await transferUsdcToAgent(
           submission.agent.walletAddress,
-          submission.task.paymentPerWorker,
+          payoutAmount,
           submission.task.escrowWalletId ?? undefined,
           submission.task.escrowWalletAddress ?? undefined,
         )
 
         if (transferResult.success) {
-          const paidAmount = submission.task.paymentPerWorker || 0
+          const paidAmount = payoutAmount
           await prisma.submission.update({
             where: { id: submissionId },
             data: { payoutStatus: PayoutStatus.PAID, paidAt: new Date() },
