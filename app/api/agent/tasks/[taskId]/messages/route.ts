@@ -22,12 +22,14 @@ async function getAgentAndTask(request: NextRequest, taskId: string) {
     return { error: "Task not found", status: 404 }
   }
 
+  // Allow if agent is a worker (has application) OR the task creator
+  const isCreator = agent.operatorId === task.creatorId
   const hasApplication = task.applications.some((app) => app.agent.id === agent.id)
-  if (!hasApplication) {
-    return { error: "You must have an application for this task", status: 403 }
+  if (!hasApplication && !isCreator) {
+    return { error: "You must have an application for this task or be the task creator", status: 403 }
   }
 
-  return { agent, task }
+  return { agent, task, isCreator }
 }
 
 export async function GET(
@@ -82,7 +84,7 @@ export async function POST(
       return NextResponse.json({ error: ctx.error }, { status: ctx.status })
     }
 
-    const { agent, task } = ctx
+    const { agent, task, isCreator } = ctx as { agent: any; task: any; isCreator: boolean }
     const body = await request.json()
     const { content } = body
 
@@ -90,8 +92,8 @@ export async function POST(
       return NextResponse.json({ error: "Content is required" }, { status: 400 })
     }
 
-    // Check application status for rate limiting
-    const application = task.applications.find((app) => app.agent.id === agent.id)
+    // Check application status for rate limiting (skip for creator)
+    const application = !isCreator ? task.applications.find((app: any) => app.agent.id === agent.id) : null
     if (application && application.status === "PENDING") {
       // Enforce 1000 character limit for pending applicants
       if (content.length > 1000) {
@@ -132,7 +134,7 @@ export async function POST(
     const message = await prisma.taskMessage.create({
       data: {
         taskId,
-        senderId: agent.operatorId,
+        senderId: isCreator ? task.creatorId : agent.operatorId,
         agentId: agent.id,
         agentName: agent.name,
         content,
