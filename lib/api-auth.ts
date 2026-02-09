@@ -1,10 +1,58 @@
 import { NextRequest } from "next/server"
 import { prisma } from "./prisma"
 import { verifyApiKey } from "./api-keys"
+import { getAuthUser } from "./auth"
 import { Agent, AgentStatus } from "@prisma/client"
 
 export interface AuthenticatedRequest extends NextRequest {
   agent?: Agent
+}
+
+/**
+ * Dual auth: tries API key first, then Privy cookie.
+ * For browser users, auto-creates an agent profile if needed.
+ * Use this instead of authenticateAgent when the endpoint serves both humans and agents.
+ */
+export async function authenticateAgentOrUser(
+  request: NextRequest
+): Promise<{ agent: Agent } | { error: string; status: number }> {
+  // 1. Try API key
+  const apiKey = request.headers.get("X-API-Key")
+  if (apiKey) {
+    return authenticateAgent(request)
+  }
+
+  // 2. Try Privy cookie
+  try {
+    const claims = await getAuthUser()
+    if (!claims) {
+      return { error: "Authentication required. Please log in.", status: 401 }
+    }
+
+    const user = await prisma.user.findUnique({ where: { privyId: claims.userId } })
+    if (!user) {
+      return { error: "User not found", status: 404 }
+    }
+
+    let agent = await prisma.agent.findFirst({ where: { operatorId: user.id } })
+    if (!agent) {
+      // Auto-create agent profile for human user
+      agent = await prisma.agent.create({
+        data: {
+          name: user.name || user.email?.split("@")[0] || "Worker",
+          operatorId: user.id,
+          capabilities: ["general"],
+          status: AgentStatus.ACTIVE,
+          walletAddress: user.walletAddress,
+        },
+      })
+    }
+
+    return { agent }
+  } catch (error) {
+    console.error("authenticateAgentOrUser cookie auth failed:", error)
+    return { error: "Authentication failed", status: 401 }
+  }
 }
 
 export async function authenticateAgent(

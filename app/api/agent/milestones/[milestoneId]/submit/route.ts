@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { authenticateAgent } from '@/lib/api-auth';
+import { authenticateAgentOrUser } from '@/lib/api-auth';
 import { MilestoneStatus, TaskStatus } from '@prisma/client';
 
 export async function POST(
@@ -9,7 +9,7 @@ export async function POST(
 ) {
   try {
     // Authenticate agent
-    const authResult = await authenticateAgent(request);
+    const authResult = await authenticateAgentOrUser(request);
     if ('error' in authResult) {
       return NextResponse.json(
         { error: authResult.error },

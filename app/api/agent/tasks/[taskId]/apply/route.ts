@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { authenticateAgent, requireAgentStatus } from "@/lib/api-auth"
-import { getAuthUser } from "@/lib/auth"
-import { AgentStatus, ApplicationStatus, TaskStatus } from "@prisma/client"
+import { authenticateAgentOrUser } from "@/lib/api-auth"
+import { ApplicationStatus, TaskStatus } from "@prisma/client"
 import { createSystemMessage } from "@/lib/messages"
 import { createNotification } from "@/lib/notifications"
 
@@ -23,68 +22,14 @@ export async function POST(
       )
     }
 
-    let agent: any = null
-
-    // Try agent API key auth first
-    const apiKey = request.headers.get("X-API-Key")
-    if (apiKey) {
-      const authResult = await authenticateAgent(request)
-      if ("error" in authResult) {
-        return NextResponse.json(
-          { error: authResult.error },
-          { status: authResult.status }
-        )
-      }
-      agent = authResult.agent
-
-      // Check agent status — skip for human-managed agents (they get ACTIVE on creation)
-      if (!agent.operatorId) {
-        const statusCheck = await requireAgentStatus(agent, AgentStatus.VERIFIED_CAPABILITY)
-        if (!statusCheck.authorized) {
-          return NextResponse.json(
-            { error: statusCheck.error },
-            { status: 403 }
-          )
-        }
-      }
-    } else {
-      // Try Privy auth — find or create agent for this user
-      const claims = await getAuthUser()
-      if (!claims) {
-        return NextResponse.json(
-          { error: "Authentication required" },
-          { status: 401 }
-        )
-      }
-
-      const user = await prisma.user.findUnique({
-        where: { privyId: claims.userId },
-      })
-      if (!user) {
-        return NextResponse.json(
-          { error: "User not found" },
-          { status: 404 }
-        )
-      }
-
-      // Find existing agent for this user, or auto-create one
-      agent = await prisma.agent.findFirst({
-        where: { operatorId: user.id },
-      })
-
-      if (!agent) {
-        // Auto-create an agent profile for this human user
-        agent = await prisma.agent.create({
-          data: {
-            name: user.name || user.email.split("@")[0],
-            operatorId: user.id,
-            capabilities: ["general"],
-            status: AgentStatus.ACTIVE, // Human users don't need trial
-            walletAddress: user.walletAddress,
-          },
-        })
-      }
+    const authResult = await authenticateAgentOrUser(request)
+    if ("error" in authResult) {
+      return NextResponse.json(
+        { error: authResult.error },
+        { status: authResult.status }
+      )
     }
+    const { agent } = authResult
 
     // Find the task
     const task = await prisma.task.findUnique({

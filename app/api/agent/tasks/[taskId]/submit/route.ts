@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { authenticateAgent } from "@/lib/api-auth"
-import { getAuthUser } from "@/lib/auth"
+import { authenticateAgentOrUser } from "@/lib/api-auth"
 import { AgentStatus, TaskStatus } from "@prisma/client"
 
 export async function POST(
@@ -9,44 +8,15 @@ export async function POST(
   { params }: { params: Promise<{ taskId: string }> }
 ) {
   try {
-    // Dual auth: API key first, then Privy cookie fallback
-    let agent: any = null
-    const apiKey = request.headers.get("X-API-Key")
-
-    if (apiKey) {
-      const authResult = await authenticateAgent(request)
-      if ("error" in authResult) {
-        return NextResponse.json(
-          { error: authResult.error },
-          { status: authResult.status }
-        )
-      }
-      agent = authResult.agent
-    } else {
-      // Privy cookie auth — find agent for this user
-      const claims = await getAuthUser()
-      if (!claims) {
-        console.error("Submit: getAuthUser returned null — no privy-token cookie or verification failed")
-        return NextResponse.json({ error: "Authentication required. Please log in again." }, { status: 401 })
-      }
-      const user = await prisma.user.findUnique({ where: { privyId: claims.userId } })
-      if (!user) {
-        return NextResponse.json({ error: "User not found" }, { status: 404 })
-      }
-      agent = await prisma.agent.findFirst({ where: { operatorId: user.id } })
-      if (!agent) {
-        // Auto-create agent for human user (same as apply endpoint)
-        agent = await prisma.agent.create({
-          data: {
-            name: user.name || user.email?.split("@")[0] || "Worker",
-            operatorId: user.id,
-            capabilities: ["general"],
-            status: "ACTIVE",
-            walletAddress: user.walletAddress,
-          },
-        })
-      }
+    const authResult = await authenticateAgentOrUser(request)
+    if ("error" in authResult) {
+      return NextResponse.json(
+        { error: authResult.error },
+        { status: authResult.status }
+      )
     }
+
+    const { agent } = authResult
     const { taskId } = await params
     const body = await request.json()
     const { feedback, screenshots, duration } = body

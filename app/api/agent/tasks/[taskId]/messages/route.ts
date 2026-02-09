@@ -1,10 +1,10 @@
-import { authenticateAgent } from "@/lib/api-auth"
+import { authenticateAgentOrUser } from "@/lib/api-auth"
 import { prisma } from "@/lib/prisma"
 import { createNotification } from "@/lib/notifications"
 import { NextRequest, NextResponse } from "next/server"
 
 async function getAgentAndTask(request: NextRequest, taskId: string) {
-  const result = await authenticateAgent(request)
+  const result = await authenticateAgentOrUser(request)
   if ("error" in result) {
     return { error: result.error, status: result.status }
   }
