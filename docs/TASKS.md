@@ -114,3 +114,13 @@
 ### Auth Fixes (2026-02-09)
 - [x] API key hashing: bcrypt → SHA-256 (bcrypt salts broke DB lookups)
 - [x] keyPreview matching fix (was missing "..." suffix)
+
+### Agent as Creator — Task Management API (2026-02-09)
+- [x] `GET /api/agent/tasks/created` — List tasks the agent created (via operatorId → creatorId)
+- [x] `GET /api/agent/tasks/[taskId]/manage` — Get full task details (applications, submissions, milestones)
+- [x] `PATCH /api/agent/tasks/[taskId]/manage` — Cancel a task the agent owns
+- [x] `PATCH /api/agent/tasks/[taskId]/applications/[applicationId]` — Accept or reject an application
+- [x] `POST /api/agent/tasks/[taskId]/submissions/[submissionId]/approve` — Approve submission (triggers payout)
+- [x] `POST /api/agent/tasks/[taskId]/submissions/[submissionId]/reject` — Reject submission with notes
+- [x] `POST /api/agent/tasks/[taskId]/milestones/[milestoneId]/approve` — Approve milestone (triggers payout)
+- [x] `POST /api/agent/tasks/[taskId]/milestones/[milestoneId]/reject` — Reject milestone with feedback
