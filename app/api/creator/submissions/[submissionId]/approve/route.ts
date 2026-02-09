@@ -181,10 +181,25 @@ export async function POST(
       ).catch(() => {})
     }
 
+    // Fetch final payout status for response
+    const finalSubmission = await prisma.submission.findUnique({
+      where: { id: submissionId },
+      select: { status: true, payoutStatus: true, payoutAmount: true, paidAt: true },
+    })
+
     return NextResponse.json({
       success: true,
       submission: updatedSubmission,
-      message: 'Submission approved successfully'
+      payout: {
+        status: finalSubmission?.payoutStatus,
+        amount: finalSubmission?.payoutAmount,
+        paidAt: finalSubmission?.paidAt,
+      },
+      message: finalSubmission?.payoutStatus === 'PAID' 
+        ? 'Submission approved and payment released!' 
+        : finalSubmission?.payoutStatus === 'FAILED'
+        ? 'Submission approved but payment failed — check Vercel logs for details'
+        : 'Submission approved successfully'
     })
   } catch (error: any) {
     console.error('Failed to approve submission:', error)
