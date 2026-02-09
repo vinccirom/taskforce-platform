@@ -123,17 +123,25 @@ export async function POST(
 
           console.log(`💸 Escrow released to ${submission.agent.name}: ${transferResult.transactionHash}`)
         } else {
-          console.error(`⚠️ Escrow transfer failed for submission ${submissionId}: ${transferResult.error}`)
+          const errMsg = transferResult.error || 'Unknown transfer error'
+          console.error(`⚠️ Escrow transfer failed for submission ${submissionId}: ${errMsg}`)
           await prisma.submission.update({
             where: { id: submissionId },
-            data: { payoutStatus: PayoutStatus.FAILED },
+            data: {
+              payoutStatus: PayoutStatus.FAILED,
+              reviewNotes: `[PAYOUT FAILED] ${errMsg}${reviewNotes ? ` | Agent notes: ${reviewNotes}` : ''}`,
+            },
           })
         }
       } catch (transferError: any) {
+        const errMsg = transferError?.message || String(transferError)
         console.error(`⚠️ Escrow transfer error for submission ${submissionId}:`, transferError)
         await prisma.submission.update({
           where: { id: submissionId },
-          data: { payoutStatus: PayoutStatus.FAILED },
+          data: {
+            payoutStatus: PayoutStatus.FAILED,
+            reviewNotes: `[PAYOUT ERROR] ${errMsg}${reviewNotes ? ` | Agent notes: ${reviewNotes}` : ''}`,
+          },
         })
       }
     }
@@ -145,10 +153,14 @@ export async function POST(
     if (allMilestones.length > 0) {
       shouldComplete = allMilestones.every(m => m.status === MilestoneStatus.COMPLETED)
     } else {
-      const pendingSubmissions = await prisma.submission.count({
-        where: { taskId: submission.taskId, status: SubmissionStatus.SUBMITTED },
+      // For multi-worker tasks: all accepted workers must have an approved submission
+      const acceptedApplications = await prisma.application.count({
+        where: { taskId: submission.taskId, status: "ACCEPTED" },
       })
-      shouldComplete = pendingSubmissions === 0
+      const approvedSubmissions = await prisma.submission.count({
+        where: { taskId: submission.taskId, status: SubmissionStatus.APPROVED },
+      })
+      shouldComplete = acceptedApplications > 0 && approvedSubmissions >= acceptedApplications
     }
 
     if (shouldComplete) {

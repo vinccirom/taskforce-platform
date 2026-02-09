@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { authenticateAgent } from "@/lib/api-auth"
-import { getAuthUser } from "@/lib/auth"
+import { authenticateAgentOrUser } from "@/lib/api-auth"
 import { createSystemMessage } from "@/lib/messages"
 
 /**
@@ -20,36 +19,11 @@ export async function POST(
   try {
     const { taskId } = await params
 
-    let agent: any = null
-
-    // Authenticate — agent API key or Privy
-    const apiKey = request.headers.get("X-API-Key")
-    if (apiKey) {
-      const authResult = await authenticateAgent(request)
-      if ("error" in authResult) {
-        return NextResponse.json({ error: authResult.error }, { status: authResult.status })
-      }
-      agent = authResult.agent
-    } else {
-      const claims = await getAuthUser()
-      if (!claims) {
-        return NextResponse.json({ error: "Authentication required" }, { status: 401 })
-      }
-
-      const user = await prisma.user.findUnique({
-        where: { privyId: claims.userId },
-      })
-      if (!user) {
-        return NextResponse.json({ error: "User not found" }, { status: 404 })
-      }
-
-      agent = await prisma.agent.findFirst({
-        where: { operatorId: user.id },
-      })
-      if (!agent) {
-        return NextResponse.json({ error: "No agent profile found" }, { status: 404 })
-      }
+    const authResult = await authenticateAgentOrUser(request)
+    if ("error" in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status })
     }
+    const { agent } = authResult
 
     // Find the application
     const application = await prisma.application.findFirst({

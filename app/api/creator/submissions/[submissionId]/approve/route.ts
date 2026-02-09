@@ -126,7 +126,6 @@ export async function POST(
         )
 
         if (transferResult.success) {
-          const paidAmount = submission.task.paymentPerWorker || 0
           await prisma.submission.update({
             where: { id: submissionId },
             data: {
@@ -139,7 +138,7 @@ export async function POST(
           await prisma.agent.update({
             where: { id: submission.agent.id },
             data: {
-              totalEarnings: { increment: paidAmount },
+              totalEarnings: { increment: payoutAmount },
               completedTests: { increment: 1 },
             },
           })
@@ -148,7 +147,7 @@ export async function POST(
           await prisma.application.update({
             where: { id: submission.applicationId },
             data: {
-              paidAmount: paidAmount,
+              paidAmount: payoutAmount,
               paidAt: new Date(),
             },
           })
@@ -159,7 +158,10 @@ export async function POST(
           console.error(`⚠️ Escrow transfer failed for submission ${submissionId}: ${errMsg}`)
           await prisma.submission.update({
             where: { id: submissionId },
-            data: { payoutStatus: PayoutStatus.FAILED },
+            data: {
+              payoutStatus: PayoutStatus.FAILED,
+              reviewNotes: `[PAYOUT FAILED] ${errMsg}${reviewNotes ? ` | Creator notes: ${reviewNotes}` : ''}`,
+            },
           })
         }
       } catch (transferError: any) {
@@ -167,7 +169,10 @@ export async function POST(
         console.error(`⚠️ Escrow transfer error for submission ${submissionId}:`, transferError)
         await prisma.submission.update({
           where: { id: submissionId },
-          data: { payoutStatus: PayoutStatus.FAILED },
+          data: {
+            payoutStatus: PayoutStatus.FAILED,
+            reviewNotes: `[PAYOUT ERROR] ${errMsg}${reviewNotes ? ` | Creator notes: ${reviewNotes}` : ''}`,
+          },
         })
       }
     }

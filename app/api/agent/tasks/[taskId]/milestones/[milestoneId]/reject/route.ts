@@ -20,8 +20,8 @@ export async function POST(
       return NextResponse.json({ error: "Agent has no linked operator" }, { status: 403 })
     }
 
-    const body = await request.json()
-    const { feedback } = body
+    const body = await request.json().catch(() => ({}))
+    const { feedback } = body as { feedback?: string }
 
     if (!feedback || typeof feedback !== "string") {
       return NextResponse.json({ error: "Feedback is required when requesting changes" }, { status: 400 })

@@ -103,7 +103,7 @@ export async function POST(
       )
     }
 
-    // Check if already submitted
+    // Check if already submitted — allow re-submission if previous was rejected
     const existingSubmission = await prisma.submission.findUnique({
       where: {
         applicationId: application.id,
@@ -111,6 +111,55 @@ export async function POST(
     })
 
     if (existingSubmission) {
+      if (existingSubmission.status === "REJECTED") {
+        // Allow re-submission: update the existing rejected submission
+        const { bugReports, rating, personaUsed } = body
+
+        const updatedSubmission = await prisma.submission.update({
+          where: { id: existingSubmission.id },
+          data: {
+            feedback,
+            screenshots: screenshots || [],
+            deliverable: bugReports || null,
+            rating: rating || null,
+            timeSpent: duration || null,
+            status: "SUBMITTED",
+            submittedAt: new Date(),
+            reviewedAt: null,
+            reviewNotes: null,
+            payoutAmount: application.task.paymentPerWorker ?? application.task.totalBudget,
+            payoutStatus: "PENDING",
+          },
+        })
+
+        // Create evidence records for uploaded files
+        const screenshotUrls: string[] = (screenshots || []).filter(
+          (url: string) => typeof url === "string" && /^https:\/\/.+/.test(url)
+        )
+        if (screenshotUrls.length > 0) {
+          await prisma.evidence.createMany({
+            data: screenshotUrls.map((url: string) => ({
+              submissionId: updatedSubmission.id,
+              url,
+              type: detectEvidenceType(url),
+              filename: extractFilename(url),
+            })),
+          })
+        }
+
+        return NextResponse.json({
+          success: true,
+          submission: {
+            id: updatedSubmission.id,
+            status: updatedSubmission.status,
+            payoutAmount: updatedSubmission.payoutAmount,
+            payoutStatus: updatedSubmission.payoutStatus,
+            submittedAt: updatedSubmission.submittedAt,
+          },
+          message: "Re-submission received. Waiting for creator approval.",
+        })
+      }
+
       return NextResponse.json(
         { error: "Submission already exists for this task" },
         { status: 400 }

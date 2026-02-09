@@ -66,6 +66,10 @@ export async function transferUsdcToAgent(
     };
   }
 
+  // TODO: Base chain support — when task.paymentChain === 'BASE', use Base RPC
+  // (e.g. https://mainnet.base.org), Base USDC address (0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913),
+  // and caip2 'eip155:8453'. Currently all payouts go through Solana.
+
   // MOCK MODE: For testing without real USDC (disabled in production)
   if (process.env.MOCK_TRANSFERS === 'true' && process.env.NODE_ENV !== 'production') {
     console.log(`🎭 MOCK: Simulating ${amountUsdc} USDC transfer to ${agentWalletAddress}`);
@@ -406,6 +410,7 @@ export async function refundEscrowToCreator(
       {
         transaction: serializedTransaction.toString('base64'),
         caip2: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
+        sponsor: true, // Privy gas sponsorship
         authorization_context: {
           authorization_private_keys: [PLATFORM_AUTH_PRIVATE_KEY || ''],
         },

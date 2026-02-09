@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
         skillsRequired: skillsRequired || [],
         totalBudget,
         paymentType: taskPaymentType,
-        paymentPerWorker: paymentPerWorker || null,
+        paymentPerWorker: paymentPerWorker || (totalBudget / taskMaxWorkers),
         maxWorkers: taskMaxWorkers,
         status: TaskStatus.DRAFT,
         deadline: deadline ? new Date(deadline) : null,

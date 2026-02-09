@@ -45,7 +45,7 @@ export async function PATCH(
       return NextResponse.json({ error: `Application is already ${application.status}` }, { status: 400 })
     }
 
-    const body = await request.json()
+    const body = await request.json().catch(() => ({}))
     const { action } = body
 
     if (action !== "accept" && action !== "reject") {
