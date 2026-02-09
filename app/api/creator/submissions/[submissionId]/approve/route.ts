@@ -125,21 +125,30 @@ export async function POST(
             data: {
               payoutStatus: PayoutStatus.PAID,
               paidAt: new Date(),
+              reviewNotes: `${reviewNotes || ''}\n[PAYOUT OK: ${transferResult.transactionHash}]`.trim(),
             },
           })
           console.log(`💸 Escrow released to ${submission.agent.name}: ${transferResult.transactionHash}`)
         } else {
-          console.error(`⚠️ Escrow transfer failed for submission ${submissionId}: ${transferResult.error}`)
+          const errMsg = transferResult.error || 'Unknown transfer error'
+          console.error(`⚠️ Escrow transfer failed for submission ${submissionId}: ${errMsg}`)
           await prisma.submission.update({
             where: { id: submissionId },
-            data: { payoutStatus: PayoutStatus.FAILED },
+            data: { 
+              payoutStatus: PayoutStatus.FAILED,
+              reviewNotes: `${reviewNotes || ''}\n[PAYOUT FAILED: ${errMsg}]`.trim(),
+            },
           })
         }
-      } catch (transferError) {
+      } catch (transferError: any) {
+        const errMsg = transferError?.message || String(transferError)
         console.error(`⚠️ Escrow transfer error for submission ${submissionId}:`, transferError)
         await prisma.submission.update({
           where: { id: submissionId },
-          data: { payoutStatus: PayoutStatus.FAILED },
+          data: { 
+            payoutStatus: PayoutStatus.FAILED,
+            reviewNotes: `${reviewNotes || ''}\n[PAYOUT ERROR: ${errMsg}]`.trim(),
+          },
         })
       }
     }
