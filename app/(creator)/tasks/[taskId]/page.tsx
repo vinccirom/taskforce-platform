@@ -12,7 +12,7 @@ import { TaskPaymentWrapper } from "@/components/task/task-payment-wrapper"
 import { DeleteTaskButton } from "@/components/task/delete-task-button"
 import { ApplicationActions } from "@/components/task/application-actions"
 import Link from "next/link"
-import { notFound } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 import { ArrowLeft, Calendar, DollarSign, Users, FileText, ExternalLink, Key, Clock, Pencil } from "lucide-react"
 import { format } from "date-fns"
 
@@ -27,7 +27,6 @@ export default async function TaskDetailsPage({
   const task = await prisma.task.findUnique({
     where: {
       id: taskId,
-      creatorId: session.user.id,
     },
     include: {
       applications: {
@@ -68,6 +67,11 @@ export default async function TaskDetailsPage({
 
   if (!task) {
     notFound()
+  }
+
+  // If user is not the creator, redirect to worker view
+  if (task.creatorId !== session.user.id) {
+    redirect(`/browse/${taskId}`)
   }
 
   const payment = task.paymentPerWorker ?? task.totalBudget
