@@ -160,11 +160,12 @@ export async function transferUsdcToAgent(
           }
         );
 
-        console.log('✅ Transfer successful:', result.transaction_id);
+        const txHash = (result as any).hash || (result as any).transaction_id || JSON.stringify(result);
+        console.log('✅ Transfer successful:', txHash);
 
         return {
           success: true,
-          transactionHash: result.transaction_id,
+          transactionHash: txHash,
         };
       } catch (retryError: any) {
         const msg = retryError?.message || String(retryError);
